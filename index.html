@@ -725,23 +725,23 @@ window.SBMock = window.SBNative ? null : (() => {
     { id: '8', pkg: 'com.google.android.gm', kind: 'email', title: 'Permit desk', text: 'Re: Resubmittal received. Review starts Monday.', time: T0 - 5 * H, live: true, actions: ['Archive', 'Reply'] },
     { id: '9', pkg: 'com.venmo', kind: 'other', title: 'Lucas paid you $25.00', text: 'pizza thursday', time: T0 - 6 * H, live: true },
     { id: '10', pkg: 'com.chase.sig.android', kind: 'other', title: 'Purchase alert', text: 'A $46.20 purchase at a gas station was made on your card.', time: T0 - 7.5 * H, live: true },
-    { id: '11', pkg: 'com.google.android.dialer', kind: 'call', convo: '(703) 555-0142', person: '(703) 555-0142', title: 'Missed call', text: 'Missed call', time: T0 - 26 * H, live: false },
+    { id: '11', pkg: 'com.google.android.dialer', kind: 'call', convo: '(555) 010-0142', person: '(555) 010-0142', title: 'Missed call', text: 'Missed call', time: T0 - 26 * H, live: false },
     { id: '12', pkg: 'com.reddit.frontpage', kind: 'other', title: 'Trending in r/androidapps', text: 'Show off your home screen: November thread', time: T0 - 9 * H, live: false },
     { id: '13', pkg: 'com.anthropic.claude', kind: 'other', title: 'Your file is ready', text: 'Site schedule export finished.', time: T0 - 28 * H, live: false }
   ];
   const day = n => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n); return d.getTime(); };
   const events = [
-    { id: 'e0', title: 'Coffee with Valen', start: Date.now() + 50 * M, end: Date.now() + 110 * M, loc: 'Ashburn', color: '#d08a4c' },
-    { id: 'e1', title: 'Dinner with Lucas and co', start: day(0) + 21.5 * H, end: day(0) + 23 * H, loc: 'Reston Town Center', color: '#d08a4c' },
+    { id: 'e0', title: 'Coffee with Valen', start: Date.now() + 50 * M, end: Date.now() + 110 * M, loc: 'Corner café', color: '#d08a4c' },
+    { id: 'e1', title: 'Dinner with Lucas and co', start: day(0) + 21.5 * H, end: day(0) + 23 * H, loc: 'Town Center', color: '#d08a4c' },
     { id: 'e2', title: 'Call with permit expediter', start: day(1) + 11 * H, end: day(1) + 11.5 * H, loc: 'Phone', color: '#7aa3d6' },
-    { id: 'e3', title: 'Site walk', start: day(2) + 8.5 * H, end: day(2) + 9.5 * H, loc: 'Herndon', color: '#7aa3d6' },
+    { id: 'e3', title: 'Site walk', start: day(2) + 8.5 * H, end: day(2) + 9.5 * H, loc: 'Downtown', color: '#7aa3d6' },
     { id: 'e4', title: 'Inspection', start: day(3) + 9 * H, end: day(3) + 10 * H, loc: 'Site', color: '#7aa3d6' },
     { id: 'e5', title: 'Rent due', start: day(4), end: day(5), allDay: true, color: '#8fc07c' }
   ];
   const contacts = [
-    { id: 'c1', name: 'Mom', phone: '+1 703 555 0101' }, { id: 'c2', name: 'Dad', phone: '+1 703 555 0102' },
-    { id: 'c3', name: 'Lucas', phone: '+1 571 555 0133' }, { id: 'c4', name: 'Marco (site)', phone: '+1 703 555 0177' },
-    { id: 'c5', name: 'Valen', phone: '+1 571 555 0190' }, { id: 'c6', name: 'Office', phone: '+1 703 555 0100' }
+    { id: 'c1', name: 'Mom', phone: '+1 555 010 0101' }, { id: 'c2', name: 'Dad', phone: '+1 555 010 0102' },
+    { id: 'c3', name: 'Lucas', phone: '+1 555 010 0133' }, { id: 'c4', name: 'Marco (site)', phone: '+1 555 010 0177' },
+    { id: 'c5', name: 'Valen', phone: '+1 555 010 0190' }, { id: 'c6', name: 'Office', phone: '+1 555 010 0100' }
   ];
   let media = { pkg: 'com.spotify.music', title: 'Glass Hallway', artist: 'Low Season', playing: true, art: null };
   const queue = [['Glass Hallway', 'Low Season'], ['Signal Fires', 'The Overpass'], ['Patch Bay', 'Mira Ostend'], ['Late Line', 'Low Season']];
@@ -783,7 +783,7 @@ window.SBMock = window.SBNative ? null : (() => {
     call: num => say('Preview: calls ' + num),
     sms: (num, body) => say('Preview: new text to ' + num),
     openContact: id => say('Preview: opens contact'),
-    profile: () => ({ name: 'Jeremias', phone: '+1 703 555 0199', email: 'jeremias@example.com',
+    profile: () => ({ name: 'Jeremias', phone: '+1 555 010 0199', email: 'jeremias@example.com',
       links: [{ label: 'Substack', url: 'https://example.substack.com' }, { label: 'Website', url: 'https://example.com' }] }),
     remind: (id, at, text) => true,
     cancelRemind: id => true,
