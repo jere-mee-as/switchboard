@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Behind the system bars until the page reports its own colour (light skin: the list) -->
+    <color name="bg">#ffefeeea</color>
+    <!-- App icon: brass field, ink jack -->
+    <color name="icon_bg">#ffe2a63b</color>
+    <color name="icon_ink">#ff1c1406</color>
+</resources>

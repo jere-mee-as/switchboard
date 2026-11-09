@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light by default so the page's "auto" skin follows the phone (WebView reads the theme's lightness). -->
+    <style name="Theme.SB" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>
