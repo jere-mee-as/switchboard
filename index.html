@@ -550,8 +550,12 @@ img{max-width:100%}
 .app[data-msgs="bubbles"] .msg.mine .mc{justify-self:end;background:color-mix(in srgb,var(--brass) 24%,var(--raise));border-radius:16px 4px 16px 16px}
 .app[data-msgs="bubbles"] .msg.mine .who{justify-content:flex-end}
 /* text size */
-.app[data-size="s"]{zoom:.92}
-.app[data-size="l"]{zoom:1.1}
+.app{zoom:1.1}
+.app[data-size="s"]{zoom:1}
+.app[data-size="l"]{zoom:1.2}
+.chan img.ai{width:27px;height:27px}
+.i{width:23px;height:23px}
+.i.sm{width:19px;height:19px}
 /* motion */
 .app[data-motion="lively"] :is(.tile,.chan,.btn,.opt,.convo,.row,.qa button,.doorway){transition:transform .14s var(--ease),background .15s}
 .app[data-motion="lively"] :is(.tile,.chan,.btn,.opt,.convo,.row,.qa button,.doorway):active{transform:scale(.95)}
@@ -649,6 +653,15 @@ img{max-width:100%}
 .cat-split .cat-go:active{color:var(--ink)}
 .cat-split .cat-go:active .i{transform:translateX(3px)!important}
 .cat-split.shut .cat-fold .i{transform:rotate(-90deg)}
+.seg.mini{display:inline-flex;gap:2px;padding:3px;margin:0;border-radius:10px;background:var(--field)}
+.seg.mini b{font:600 12px/1 var(--font-ui);padding:6px 8px;border-radius:7px;color:var(--ink-3);transition:background .2s,color .2s}
+.seg.mini b.on{background:var(--raise);color:var(--ink)}
+.chan-scroll.sorting{overflow:hidden}
+.chan-scroll.sorting .chan{transition:transform .22s var(--glide)}
+.chan.lifted{position:relative;z-index:3;background:var(--raise);box-shadow:0 12px 26px rgba(0,0,0,.4),0 0 0 1.5px var(--brass);transition:box-shadow .2s!important}
+.chan.settle{animation:settleRow .45s var(--spring)}
+@keyframes settleRow{0%{transform:scale(1.04)}100%{transform:none}}
+.views,.rail,.page{touch-action:pan-y}
 .findbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:8px;margin:8px 12px 4px;padding:0 12px;height:44px;border-radius:12px;
   background:var(--field);color:var(--ink-3);box-shadow:0 6px 14px -8px rgba(0,0,0,.5)}
 .findbar input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;color:var(--ink);font:16px var(--font-ui)}
@@ -1445,7 +1458,11 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     paypal: Object.assign({ n: 'PayPal', i: 'cash', ph: 'paypal.me name', host: /paypal\.(me|com)/ }, handleOr(h => 'https://paypal.me/' + h, h => h)),
     spotify: Object.assign({ n: 'Spotify', i: 'music', ph: 'profile or playlist link', host: /spotify\.com/ }, handleOr(h => 'https://open.spotify.com/user/' + h, h => h)),
     soundcloud: Object.assign({ n: 'SoundCloud', i: 'music', ph: 'username', host: /soundcloud\.com/ }, handleOr(h => 'https://soundcloud.com/' + h, h => h)),
-    substack: { n: 'Substack', i: 'pen', ph: 'name or link', host: /substack\.com/, url: v => (isUrl(v) ? toUrl(v) : 'https://' + bare(v) + '.substack.com'), show: v => (isUrl(v) ? hostOf(toUrl(v)) : bare(v) + '.substack.com') },
+    // Substack: "@handle" is your profile (substack.com/@handle); a plain name is your publication (name.substack.com);
+    // anything with a dot or slash is used as typed (custom domains too).
+    substack: { n: 'Substack', i: 'pen', ph: 'yourname.substack.com or @handle', host: /substack\.com/,
+      url: v => { v = String(v).trim(); if (/^@/.test(v)) return 'https://substack.com/@' + bare(v); if (isUrl(v)) return toUrl(v.replace(/\s+/g, '')); return 'https://' + bare(v).toLowerCase().replace(/[^a-z0-9-]/g, '') + '.substack.com'; },
+      show: v => { v = String(v).trim(); if (/^@/.test(v)) return '@' + bare(v); if (isUrl(v)) return hostOf(toUrl(v)); return bare(v).toLowerCase().replace(/[^a-z0-9-]/g, '') + '.substack.com'; } },
     letterboxd: Object.assign({ n: 'Letterboxd', i: 'film', ph: 'username', host: /letterboxd\.com|boxd\.it/ }, handleOr(h => 'https://letterboxd.com/' + h + '/', h => h)),
     x: Object.assign({ n: 'X', i: 'at', ph: '@handle', host: /(^|\.)(x|twitter)\.com/ }, handleOr(h => 'https://x.com/' + h)),
     bluesky: Object.assign({ n: 'Bluesky', i: 'at', ph: 'handle.bsky.social', host: /bsky\.app/ }, { url: v => (/\//.test(v) ? toUrl(v) : 'https://bsky.app/profile/' + bare(v)), show: v => (/\//.test(v) ? hostOf(toUrl(v)) : '@' + bare(v)) }),
@@ -1478,7 +1495,11 @@ if (typeof module !== 'undefined') module.exports = SBQR;
   const isHidden = k => D.hidden.includes(k);
   const visApps = () => S.apps.filter(a => !isHidden(a.key));
   const spaceOf = id => arr(D.spaces).find(s => s.id === id);
-  const spaceApps = sp => (sp ? sp.apps : []).map(appOf).filter(a => a && !isHidden(a.key));
+  // A–Z unless the space is set to Custom order (then the order you dragged them into).
+  const spaceApps = sp => {
+    const l = (sp ? sp.apps : []).map(appOf).filter(a => a && !isHidden(a.key));
+    return sp && sp.sort === 'custom' ? l : l.sort((x, y) => x.label.localeCompare(y.label, undefined, { sensitivity: 'base' }));
+  };
   const pinnedApps = () => D.pinned.map(appOf).filter(a => a && !isHidden(a.key));
   const muted = p => D.muted.includes(p);
   const spacePkgs = id => (id === 'home' ? null : new Set(spaceApps(spaceOf(id)).map(a => a.pkg)));
@@ -1666,9 +1687,11 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     const keys = [...groups.keys()].sort((x, y) => (x === '#') - (y === '#') || x.localeCompare(y));
     return keys.map(L => `<div class="lsep" data-l="${esc(L)}">${esc(L)}</div>` + wrap(groups.get(L).map(rowFn).join(''))).join('');
   }
+  // The app is drawn with CSS zoom (text size). Finger positions are in screen pixels; positions we set are in zoomed pixels.
+  const Z = () => parseFloat(getComputedStyle($('#app')).zoom) || 1;
   const motionOK = () => D.fun.motion !== 'still' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
   function renderList() {
-    if (S.azBusy) return;   // finger is on the letter strip
+    if (S.azBusy || S.drag) return;   // finger is on the letter strip
     const el = $('#chanlist');
     const old = el.querySelector('.chan-scroll');
     const changed = S.listSpace !== S.space;
@@ -1699,7 +1722,8 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       const apps = spaceApps(sp);
       head = spaceHead(sp.name, plural(apps.length, 'app'));
       body += cat(sp.id + ':text', 'Text', [activityRow(sp.id)]);
-      body += cat(sp.id + ':apps', 'Apps', apps.map(appRow), apps.length);
+      const custom = sp.sort === 'custom';
+      body += cat(sp.id + ':apps', custom ? 'Apps · your order' : 'Apps', apps.map(a => { const r = appRow(a); if (custom) r.h = r.h.replace('data-long="app"', `data-long="app" data-reorder="${esc(sp.id)}"`); return r; }), apps.length);
       body += `<button class="chan add" data-act="ov" data-v="edit-space" data-id="${esc(sp.id)}"><span class="hash">${ic('plus', 'sm')}</span><span class="cl">Add or remove apps</span></button>`;
       body += pullHint();
     }
@@ -1748,7 +1772,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
         bub.firstChild.textContent = seps[i].dataset.l;
         if (B.haptic) B.haptic('tick');
       }
-      bub.style.top = Math.max(0, Math.min(hr.height - 58, y - hr.top - 50)) + 'px';
+      bub.style.top = Math.max(0, Math.min(hr.height / Z() - 58, (y - hr.top) / Z() - 50)) + 'px';
     };
     az.addEventListener('pointerdown', e => {
       e.preventDefault(); e.stopPropagation();
@@ -2165,17 +2189,20 @@ if (typeof module !== 'undefined') module.exports = SBQR;
   function openFeedFromTop() {
     closeSheet(); closeYou();
     if (S.ov) { S.ov = null; S.ppDraft = null; const o = $('#overlay'); o.hidden = true; o.innerHTML = ''; o.classList.remove('has-az'); }
-    if (S.wide) { openChannel('home:feed'); return; }
+    if (S.wide) { openChannel('home:feed'); focusFeed(); return; }
     const ch = $('#chat');
-    if (!motionOK()) { openChannel('home:feed'); return; }
+    if (!motionOK()) { openChannel('home:feed'); focusFeed(); return; }
     ch.classList.add('drag'); ch.classList.remove('at-chat', 'at-people');
     ch.style.transform = 'translate3d(0,-100%,0)';
     void ch.offsetWidth;
     ch.classList.remove('drag'); ch.classList.add('vslide');
     ch.style.transform = '';
     openChannel('home:feed');
+    focusFeed();
     setTimeout(() => ch.classList.remove('vslide'), 460);
   }
+  // Focus inside the same touch that opened #feed, so Android raises the keyboard.
+  function focusFeed() { const i = $('#input'); if (i) { i.focus({ preventScroll: true }); if (S.wide) return; } }
   function closeChatUp() {
     if (S.wide) return;
     const ch = $('#chat');
@@ -2951,10 +2978,22 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     const i = D.spaces.indexOf(s);
     openSheet(`<div class="sh-head"><span class="tile">${spaceIcon(s)}</span><div class="tt"><b>${esc(s.name)}</b><small>${plural(spaceApps(s).length, 'app')}</small></div></div><div class="group">` +
       row(`data-act="ov" data-v="edit-space" data-id="${esc(id)}"`, ic('plus'), 'Add or remove apps', 'Search, pick, done') +
+      row(`data-act="sp-rename" data-id="${esc(id)}"`, ic('edit'), 'Rename', s.auto ? 'Named after its apps for now' : '') +
+      row(`data-act="sp-sort" data-id="${esc(id)}"`, ic('sliders'), 'Sort apps', s.sort === 'custom' ? 'Hold an app and drag it to move it' : 'Alphabetical, new apps fall into place',
+        `<span class="seg mini"><b class="${s.sort === 'custom' ? '' : 'on'}">A–Z</b><b class="${s.sort === 'custom' ? 'on' : ''}">Custom</b></span>`) +
       row(`data-act="space-read" data-id="${esc(id)}"`, ic('checks'), 'Mark #activity as read') +
       (i > 0 ? row(`data-act="sp-move" data-id="${esc(id)}" data-v="-1"`, ic('up'), 'Move up') : '') +
       (i < D.spaces.length - 1 ? row(`data-act="sp-move" data-id="${esc(id)}" data-v="1"`, ic('down'), 'Move down') : '') +
       row(`data-act="sp-del" data-id="${esc(id)}"`, ic('trash'), 'Delete space', 'Apps stay installed and in All apps', '', 'danger') + '</div>', 'space');
+  }
+  function renameSheet(id) {
+    const s = spaceOf(id); if (!s) return;
+    openSheet(`<div class="sh-head"><span class="tile">${spaceIcon(s)}</span><div class="tt"><b>Rename space</b><small>Leave it empty to name it after its apps</small></div></div>` +
+      `<input class="inp" id="rnName" maxlength="40" autocomplete="off" enterkeyhint="done" placeholder="${esc(autoName(s))}" value="${s.auto ? '' : esc(s.name)}">` +
+      `<div style="padding:12px 12px 4px"><button class="btn pri wide" data-act="sp-rename-save" data-id="${esc(id)}">Save</button></div>`, 'space');
+    const i = $('#rnName');
+    i.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ACT['sp-rename-save']({ dataset: { id } }); } });
+    i.focus({ preventScroll: true }); i.select();
   }
   function findMsg(mid) { return messagesFor(S.co).find(m => m.id === mid); }
   function msgSheet(mid) {
@@ -3311,6 +3350,17 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       }
       save(); t.querySelector('.check').classList.toggle('on'); renderRail();
     },
+    'sp-rename': t => renameSheet(t.dataset.id),
+    'sp-rename-save': t => {
+      const s = spaceOf(t.dataset.id), v = (($('#rnName') || {}).value || '').trim().slice(0, 40); if (!s) return;
+      s.auto = !v; s.name = v || autoName(s); save(); closeSheet(); renderAll(); toast(v ? 'Renamed' : 'Named after its apps');
+    },
+    'sp-sort': t => {
+      const s = spaceOf(t.dataset.id); if (!s) return;
+      if (s.sort === 'custom') s.sort = 'abc';
+      else { s.apps = spaceApps(s).map(a => a.key).concat(s.apps.filter(k => !appOf(k) || isHidden(k))); s.sort = 'custom'; toast('Hold an app and drag it to move it'); }
+      save(); renderAll(); spaceSheet(s.id);
+    },
     'sp-move': t => {
       const i = D.spaces.findIndex(s => s.id === t.dataset.id), j = i + +t.dataset.v;
       if (i < 0 || j < 0 || j >= D.spaces.length) return;
@@ -3411,7 +3461,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       if (!t || (e.pointerType === 'mouse' && (!t.matches('.tile') || e.button !== 0))) return;
       lp = { t, x: e.clientX, y: e.clientY, timer: setTimeout(() => {
         suppress = true; if (B.haptic) B.haptic('long');
-        if (t.matches('.tile[data-long="space"]') && startSort(t)) { lp = null; return; }
+        if ((t.matches('.tile[data-long="space"]') || t.matches('[data-reorder]')) && startSort(t)) { lp = null; return; }
         lp = null; onLong(t);
       }, 460) };
     });
@@ -3431,50 +3481,65 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     let d = null;
     const W = () => app.clientWidth, PW = () => app.clientWidth * 0.84;
     const posX = p => (p === 'list' ? W() : p === 'people' ? -PW() : 0);
-    app.addEventListener('pointerdown', e => {
-      if (S.wide || (e.pointerType === 'mouse' && e.button !== 0) || S.sheet || S.ov || S.you || S.drag) return;
-      if (e.target.closest('textarea,input,.picker,.favs,.seg,.nowbar,.tabs,.az')) return;
+    // Touch uses touch events (they keep coming even if the browser starts scrolling and cancels the pointer); mouse uses pointer events.
+    function swStart(x, y, target, id) {
+      if (S.wide || S.sheet || S.ov || S.you || S.drag) return;
+      if (target.closest('textarea,input,.picker,.favs,.seg,.nowbar,.tabs,.az')) return;
       let zone = null;
-      if (e.target.closest('#chat') || (S.pos === 'people' && e.target.closest('#people'))) zone = 'chat';
-      else if (S.pos === 'list' && S.tab === 'home' && e.target.closest('#v-home')) zone = 'home';
+      if (target.closest('#chat') || (S.pos === 'people' && target.closest('#people'))) zone = 'chat';
+      else if (S.pos === 'list' && target.closest('#views')) zone = 'home';   // any list: Home, a space, Messages, Activity
       if (!zone) return;
-      d = { x0: e.clientX, y0: e.clientY, t0: performance.now(), base: posX(S.pos), on: false, id: e.pointerId, zone, x: posX(S.pos) };
-    });
-    app.addEventListener('pointermove', e => {
-      if (!d || e.pointerId !== d.id) return;
+      d = { x0: x, y0: y, t0: performance.now(), base: posX(S.pos), on: false, id, zone, x: posX(S.pos), hist: [] };
+    }
+    function swMove(x, y, pointerId) {
+      if (!d) return;
       if (S.drag || (rb && rb.on)) { d = null; return; }
-      const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+      const dx = x - d.x0, dy = y - d.y0;
       if (!d.on) {
-        if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.3) { d = null; return; }
-        if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 0.9) return;
+        // Generous: a mostly-sideways move wins, even a slanted one.
+        if (Math.abs(dy) > 22 && Math.abs(dy) > Math.abs(dx) * 1.7) { d = null; return; }
+        if (Math.abs(dx) < 7 || Math.abs(dx) < Math.abs(dy) * 0.75) return;
         if (d.zone === 'home' && dx > 0) { d = null; return; }
         if (d.base === -PW() && dx < 0) { d = null; return; }
         d.on = true; cancelLp(); unpress();
         if (d.zone === 'home') { if (S.ch !== 'home:feed') { S.ch = 'home:feed'; S.reply = null; } S.enterSeen = D.seen[S.ch] || 0; renderChat(); }
         chat.classList.add('drag');
-        try { app.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+        if (pointerId != null) { try { app.setPointerCapture(pointerId); } catch (_) { /* ignore */ } }
       }
-      d.x = Math.max(-PW(), Math.min(W(), d.base + dx));
+      d.x = Math.max(-PW(), Math.min(W(), d.base + dx / Z()));
+      const nowT = performance.now();
+      d.hist.push([nowT, d.x]); while (d.hist.length > 2 && nowT - d.hist[0][0] > 90) d.hist.shift();
       chat.style.transform = `translate3d(${d.x}px,0,0)`;
       people.classList.toggle('show', d.x < 0);
-    });
-    const end = e => {
-      if (!d || e.pointerId !== d.id) return;
+    }
+    function swEnd() {
+      if (!d) return;
       const g = d; d = null;
       if (!g.on) return;
       dragEnd = performance.now();
       chat.classList.remove('drag'); chat.style.transform = '';
-      const v = (g.x - g.base) / Math.max(1, performance.now() - g.t0);
+      // Speed over the last ~90 ms, so a flick at the end counts even after a slow start.
+      const h0 = g.hist[0] || [g.t0, g.base], h1 = g.hist[g.hist.length - 1] || [performance.now(), g.x];
+      const v = g.hist.length > 1 ? (h1[1] - h0[1]) / Math.max(16, h1[0] - h0[0]) : (g.x - g.base) / Math.max(16, h1[0] - g.t0);
       let target;
-      if (g.base === W()) target = g.x < W() * 0.82 || v < -0.25 ? 'chat' : 'list';
-      else if (g.base === 0) target = g.x > W() * 0.25 || v > 0.35 ? 'list' : g.x < -PW() * 0.25 || v < -0.35 ? 'people' : 'chat';
+      if (g.base === W()) target = v > 0.3 ? 'list' : g.x < W() * 0.86 || v < -0.15 ? 'chat' : 'list';
+      else if (g.base === 0) target = v < -0.3 && g.x < 0 ? 'people' : g.x > W() * 0.16 || v > 0.15 ? 'list' : g.x < -PW() * 0.25 || v < -0.35 ? 'people' : 'chat';
       else target = g.x > W() * 0.25 ? 'list' : g.x > -PW() * 0.62 || v > 0.35 ? 'chat' : 'people';
       if (target === 'chat' && g.base === W() && S.ch === 'home:feed') D.lastCh = 'home:feed';
       setPos(target);
       if (target === 'chat') setTimeout(() => { if (S.pos === 'chat') people.classList.remove('show'); }, 300);
-    };
-    app.addEventListener('pointerup', end);
-    app.addEventListener('pointercancel', end);
+    }
+    app.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button === 0) swStart(e.clientX, e.clientY, e.target, e.pointerId); });
+    app.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') swMove(e.clientX, e.clientY, e.pointerId); });
+    app.addEventListener('pointerup', e => { if (e.pointerType === 'mouse') swEnd(); });
+    app.addEventListener('touchstart', e => { d = null; if (e.touches.length === 1) swStart(e.touches[0].clientX, e.touches[0].clientY, e.target, 't'); }, { passive: true });
+    app.addEventListener('touchmove', e => {
+      if (!d || e.touches.length !== 1) return;
+      swMove(e.touches[0].clientX, e.touches[0].clientY, null);
+      if (d && d.on && e.cancelable) e.preventDefault();   // once it's a sideways swipe, the list underneath doesn't scroll
+    }, { passive: false });
+    app.addEventListener('touchend', () => swEnd(), { passive: true });
+    app.addEventListener('touchcancel', () => swEnd(), { passive: true });
     chat.addEventListener('transitionend', () => { if (!S.wide && S.pos !== 'people') people.classList.remove('show'); });
 
     // Floaty overscroll on every list. Past the top: #feed (or closes a sheet). Past the end of Home or a space: All apps.
@@ -3483,6 +3548,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     const ACTS = {
       feed: { dir: 1, label: () => `${ic('hash', 'xs')}feed`, run: () => openFeedFromTop() },
       all: { dir: -1, label: () => `${ic('grid', 'xs')}All apps`, run: () => setSpace('all') },
+      home: { dir: 1, label: () => `${ic('panel', 'xs')}Home`, run: () => setSpace('home') },
       back: { dir: -1, label: () => `${ic('home', 'xs')}Back to the list`, run: () => closeChatUp() },
       shade: { dir: 1, label: () => `${ic('bell', 'xs')}Notifications`, run: () => B.shade() },
       sheet: { dir: 1, follow: '#sheet', run: () => closeSheet() },
@@ -3493,7 +3559,8 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       if (sc.matches('.you-body')) return dir > 0 ? 'you' : null;
       if (sc.matches('.rail')) return dir > 0 ? 'shade' : null;
       if (sc.matches('#msgs')) return dir < 0 && !S.wide && S.pos === 'chat' ? 'back' : null;
-      if (sc.matches('.chan-scroll')) return dir > 0 ? 'feed' : S.space !== 'all' ? 'all' : null;
+      // In All apps, pulling past the top goes back Home (the #feed bar stays right there at the top).
+      if (sc.matches('.chan-scroll')) return dir > 0 ? (S.space === 'all' ? 'home' : 'feed') : S.space !== 'all' ? 'all' : null;
       return dir > 0 ? 'feed' : null;   // Messages, Activity, overlays (adding apps to a space, settings…)
     }
     let rb = null;
@@ -3526,7 +3593,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
         if (a && a.label) {
           const r = rb.sc.getBoundingClientRect(), ar = app.getBoundingClientRect();
           cue.innerHTML = a.label();
-          cue.style.top = (dir > 0 ? r.top - ar.top + 10 : r.bottom - ar.top - 44) + 'px';
+          cue.style.top = (dir > 0 ? (r.top - ar.top) / Z() + 10 : (r.bottom - ar.top) / Z() - 44) + 'px';
           cue.classList.remove('ready');
         }
       }
@@ -3557,33 +3624,50 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       if (go && a.follow) { el.style.transform = ''; a.run(); return; }
       el.classList.add('springback'); el.style.transform = '';
       setTimeout(() => el.classList.remove('springback'), 560);
-      if (go) { if (B.haptic) B.haptic('long'); setTimeout(a.run, g.act === 'all' ? 0 : 60); }
+      if (go) { if (B.haptic) B.haptic('long'); if (g.act === 'feed' || g.act === 'all' || g.act === 'home') a.run(); else setTimeout(a.run, 60); }
     };
     app.addEventListener('touchend', rbEnd, { passive: true });
     app.addEventListener('touchcancel', rbEnd, { passive: true });
 
-    // Hold a space on the rail to lift it, drag it to a new spot, let go to drop it there. Hold and let go without moving: its options.
+    // Hold a space on the rail (or an app in a custom-ordered space) to lift it, drag it to a new spot, let go to drop it.
+    // Hold and let go without moving: its options, as before.
     const rail = $('#rail');
-    function startSort(tile) {
-      const tiles = [...rail.querySelectorAll('.tile[data-long="space"]')].filter(x => x.dataset.id !== 'home' && x.dataset.id !== 'all');
-      const from = tiles.indexOf(tile);
-      if (from < 0) return false;
-      const rects = tiles.map(x => x.getBoundingClientRect());
-      S.drag = { tile, tiles, rects, from, to: from, y0: lp ? lp.y : rects[from].top, moved: false, step: tiles.length > 1 ? rects[1].top - rects[0].top : 58 };
-      rail.classList.add('sorting'); tile.classList.add('lifted');
-      tile.style.transform = 'scale(1.12)';
+    function startSort(item) {
+      let items, box, drop;
+      if (item.matches('.tile')) {
+        items = [...rail.querySelectorAll('.tile[data-long="space"]')].filter(x => x.dataset.id !== 'home' && x.dataset.id !== 'all');
+        box = rail;
+        drop = (from, to) => { const [sp] = D.spaces.splice(from, 1); D.spaces.splice(to, 0, sp); };
+      } else {
+        const sp = spaceOf(item.dataset.reorder); if (!sp) return false;
+        box = item.closest('.chan-scroll');
+        items = [...box.querySelectorAll(`[data-reorder="${CSS.escape(sp.id)}"]`)];
+        drop = (from, to) => {
+          const keys = items.map(x => x.dataset.key), [k] = keys.splice(from, 1); keys.splice(to, 0, k);
+          sp.apps = keys.concat(sp.apps.filter(x => !keys.includes(x)));   // hidden apps keep their place at the end
+        };
+      }
+      const from = items.indexOf(item);
+      if (from < 0 || items.length < 2) return false;
+      const rects = items.map(x => x.getBoundingClientRect());
+      S.drag = { tile: item, tiles: items, rects, from, to: from, y0: lp ? lp.y : rects[from].top, moved: false, box, drop,
+        step: (rects[1].top - rects[0].top) / Z() };
+      box.classList.add('sorting'); item.classList.add('lifted');
+      item.style.transform = 'scale(1.04)';
       const ar = app.getBoundingClientRect(), hint = document.createElement('div');
       hint.className = 'sort-hint'; hint.textContent = 'Drag to reorder';
-      hint.style.top = (rects[from].top - ar.top + 12) + 'px';
+      const z = Z();
+      if (item.matches('.tile')) hint.style.top = ((rects[from].top - ar.top) / z + 12) + 'px';
+      else { hint.style.top = ((rects[from].top - ar.top) / z - 38) + 'px'; hint.style.left = ((rects[from].left - ar.left) / z + 46) + 'px'; }
       app.appendChild(hint); S.drag.hint = hint;
       return true;
     }
     function moveSort(y) {
-      const g = S.drag, dy = y - g.y0;
+      const g = S.drag, dy = (y - g.y0) / Z(), lift = g.tile.matches('.tile') ? 1.12 : 1.04;
       if (Math.abs(dy) > 6 && !g.moved) { g.moved = true; if (g.hint) { g.hint.remove(); g.hint = null; } }
-      const lo = g.rects[0].top - g.rects[g.from].top, hi = g.rects[g.rects.length - 1].top - g.rects[g.from].top;
+      const lo = (g.rects[0].top - g.rects[g.from].top) / Z(), hi = (g.rects[g.rects.length - 1].top - g.rects[g.from].top) / Z();
       const off = Math.max(lo - 20, Math.min(hi + 20, dy));
-      g.tile.style.transform = `translate3d(0,${off}px,0) scale(1.12)`;
+      g.tile.style.transform = `translate3d(0,${off}px,0) scale(${lift})`;
       const to = Math.max(0, Math.min(g.tiles.length - 1, g.from + Math.round(off / g.step)));
       if (to !== g.to) { g.to = to; if (B.haptic) B.haptic('tick'); }
       g.tiles.forEach((x, i) => {
@@ -3596,21 +3680,18 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       const g = S.drag; if (!g) return;
       S.drag = null;
       if (g.hint) g.hint.remove();
-      rail.classList.remove('sorting');
+      g.box.classList.remove('sorting');
       g.tiles.forEach(x => { x.style.transform = ''; });
       g.tile.classList.remove('lifted');
-      const id = g.tile.dataset.id;
-      if (!g.moved) { renderRail(); if (!cancel) spaceSheet(id); return; }
-      if (g.to !== g.from) {
-        const [sp] = D.spaces.splice(g.from, 1); D.spaces.splice(g.to, 0, sp); save();
-        if (B.haptic) B.haptic('long');
-      }
-      renderRail();
-      const t = rail.querySelector(`.tile[data-id="${CSS.escape(id)}"]`);
+      const isTile = g.tile.matches('.tile'), id = isTile ? g.tile.dataset.id : g.tile.dataset.key;
+      if (!g.moved) { renderRail(); renderList(); if (!cancel) onLong(g.tile); return; }
+      if (g.to !== g.from) { g.drop(g.from, g.to); save(); if (B.haptic) B.haptic('long'); }
+      renderRail(); renderList();
+      const t = isTile ? rail.querySelector(`.tile[data-id="${CSS.escape(id)}"]`) : $('#chanlist').querySelector(`[data-reorder][data-key="${CSS.escape(id)}"]`);
       if (t && motionOK()) t.classList.add('settle');
       dragEnd = performance.now();
     }
-    rail.addEventListener('touchmove', e => { if (S.drag && e.cancelable) e.preventDefault(); }, { passive: false });
+    app.addEventListener('touchmove', e => { if (S.drag && e.cancelable) e.preventDefault(); }, { passive: false });
     app.addEventListener('pointermove', e => { if (S.drag) moveSort(e.clientY); });
     app.addEventListener('pointerup', () => { if (S.drag) endSort(false); });
     app.addEventListener('pointercancel', () => { if (S.drag) endSort(!S.drag.moved); });
