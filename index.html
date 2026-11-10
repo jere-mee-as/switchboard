@@ -695,6 +695,9 @@ img{max-width:100%}
 .nrow.swiping{transition:background .15s}
 .nrow.past{background:color-mix(in srgb,var(--call) 16%,transparent)}
 #v-activity{touch-action:pan-y}
+.qr-btns{display:flex;gap:8px;padding:0 12px}
+.qr-btns .btn{flex:1;justify-content:center;height:44px;border-radius:12px}
+.qr-note{text-align:center;font-size:12px;color:var(--ink-3);padding:10px 16px 4px}
 .findbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:8px;margin:8px 12px 4px;padding:0 12px;height:44px;border-radius:12px;
   background:var(--field);color:var(--ink-3);box-shadow:0 6px 14px -8px rgba(0,0,0,.5)}
 .findbar input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;color:var(--ink);font:16px var(--font-ui)}
@@ -1082,6 +1085,7 @@ window.SBMock = window.SBNative ? null : (() => {
       const t = setInterval(() => { p += 20; SB.onNative('update', JSON.stringify({ kind: 'app', state: 'downloading', pct: Math.min(p, 100), version: '0.5.0' }));
         if (p >= 100) { clearInterval(t); setTimeout(() => SB.onNative('update', JSON.stringify({ kind: 'app', state: 'confirm' })), 400); } }, 300);
     },
+    shareFile: (name, mime, text) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name; a.click(); say('Preview: downloads ' + name); return true; },
     applyPage: () => say('Preview: reloads the newest page'),
     resetPage: () => say('Preview: back to the built-in page')
   };
@@ -2056,6 +2060,33 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     if (notes.length) L.push('NOTE:' + e(notes.join('\n')));
     L.push('END:VCARD');
     return L.join('\r\n');
+  }
+  // Your profile picture as a small square JPEG (the chosen area, first frame of a GIF), for the contact card.
+  function avatarJpeg() {
+    return new Promise(res => {
+      const m = D.pics && D.pics.avatar, u = PIC.url.avatar;
+      if (!m || !u) return res('');
+      const img = new Image();
+      img.onload = () => {
+        const F = 360, c = document.createElement('canvas'); c.width = c.height = F;
+        const s = Math.max(F / m.w, F / m.h) * m.z, sw = F / s;
+        c.getContext('2d').drawImage(img, m.cx * m.w - sw / 2, m.cy * m.h - sw / 2, sw, sw, 0, 0, F, F);
+        try { res(c.toDataURL('image/jpeg', 0.82).split(',')[1] || ''); } catch (e) { res(''); }
+      };
+      img.onerror = () => res('');
+      img.src = u;
+    });
+  }
+  // The full contact card file: the same details as the code, plus the photo (lines folded the way vCard wants).
+  async function cardFile() {
+    let v = vcard(D.passport);
+    const ph = await avatarJpeg();
+    if (ph) {
+      const line = 'PHOTO;ENCODING=b;TYPE=JPEG:' + ph, folded = [line.slice(0, 75)];
+      for (let i = 75; i < line.length; i += 74) folded.push(' ' + line.slice(i, i + 74));
+      v = v.replace('END:VCARD', folded.join('\r\n') + '\r\nEND:VCARD');
+    }
+    return v;
   }
   const qrSvg = (text) => (window.SBQR ? SBQR.svg(text != null ? text : vcard(D.passport)) : '');
   const hostOf = u => { try { const x = new URL(u); return (x.host + (x.pathname.length > 1 ? x.pathname.replace(/\/$/, '') : '')).replace(/^www\./, ''); } catch (e) { return u; } };
@@ -3260,7 +3291,9 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       links.map((x, j) => `<button class="${i === j ? 'on' : ''}" data-act="qr-pick" data-i="${j}">${ic(linkDef(x).i)}${esc(linkName(x))}</button>`).join('') + '</div>';
     const all = [p.name, p.phone, p.email].concat(arr(p.links).map(x => linkUrl(x) || linkName(x) + ': ' + linkShow(x))).filter(Boolean).join('\n');
     const html = `<div class="sh-head">${meAv()}<div class="tt"><b>${esc(p.name)}</b><small>${l ? `Scan to open my ${esc(linkName(l))}` : 'Scan with any phone camera to save this contact'}</small></div></div>` + chips +
-      `<div class="qr-big ${swap ? 'flip' : ''}">${q}</div>${l ? `<div class="qr-cap">${esc(linkShow(l))}</div>` : ''}<div style="padding:0 12px"><button class="btn wide" data-act="b" data-a="copy" data-v="${esc(l ? linkUrl(l) : all)}">${ic('copy')}${l ? 'Copy link' : 'Copy contact details'}</button></div>`;
+      `<div class="qr-big ${swap ? 'flip' : ''}">${q}</div>${l ? `<div class="qr-cap">${esc(linkShow(l))}</div>` : ''}` +
+      `<div class="qr-btns"><button class="btn pri" data-act="send-card">${ic('share')}Send card</button><button class="btn" data-act="b" data-a="copy" data-v="${esc(l ? linkUrl(l) : all)}">${ic('copy')}${l ? 'Copy link' : 'Copy details'}</button></div>` +
+      `<div class="qr-note">The code holds your details. Send card also carries your photo.</div>`;
     if (swap && S.sheet === 'qr') { const sb = $('#sheetBody'), x = sb.querySelector('.qrpick').scrollLeft; sb.innerHTML = html; sb.querySelector('.qrpick').scrollLeft = x; if (B.haptic) B.haptic('tick'); return; }
     S.qrIdx = i;
     openSheet(html, 'qr');
@@ -3536,6 +3569,11 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     },
     'sp-rename': t => renameSheet(t.dataset.id),
     'pic-menu': t => picSheet(t.dataset.v),
+    'send-card': async () => {
+      const v = await cardFile(), name = (D.passport.name || 'contact').trim() + '.vcf';
+      if (B.shareFile && B.shareFile(name, 'text/x-vcard', v)) return;
+      toast('Update Switchboard to send your card (/update)');
+    },
     'pic-pick': t => { closeSheet(); pickPic(t.dataset.v); },
     'pic-crop': t => { closeSheet(); cropPic(t.dataset.v, null, D.pics[t.dataset.v]); },
     'pic-del': async t => {

@@ -32,9 +32,11 @@ import android.view.HapticFeedbackConstants
 import android.webkit.JavascriptInterface
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
@@ -577,6 +579,24 @@ class Native(private val act: MainActivity) {
                 }
             )
         }
+    }
+
+    /** Hands a small text file (a contact card) to Android's share sheet. */
+    @JavascriptInterface
+    fun shareFile(name: String, mime: String, text: String): Boolean = try {
+        val dir = File(act.cacheDir, "share").apply { mkdirs(); listFiles()?.forEach { it.delete() } }
+        val safe = name.replace(Regex("[^A-Za-z0-9 ._-]"), "").trim().ifBlank { "contact.vcf" }
+        val f = File(dir, safe)
+        f.writeText(text)
+        val uri = FileProvider.getUriForFile(act, act.packageName + ".files", f)
+        val send = Intent(Intent.ACTION_SEND).setType(mime)
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        send.clipData = ClipData.newRawUri("", uri)
+        ui { act.start(Intent.createChooser(send, null).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)) }
+        true
+    } catch (e: Exception) {
+        false
     }
 
     // ---------------------------------------------------------------- updates (see Updater)
