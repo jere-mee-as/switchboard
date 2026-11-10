@@ -16,9 +16,12 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.UserHandle
+import android.provider.MediaStore
 import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -66,6 +69,13 @@ class MainActivity : ComponentActivity() {
 
     private val permLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { emit("perms") }
+    /** <input type=file> on the page (banner and profile picture): Android's photo picker, GIFs included. */
+    private var fileCb: ValueCallback<Array<Uri>>? = null
+    private val fileLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+            fileCb?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(r.resultCode, r.data))
+            fileCb = null
+        }
     private val roleLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { emit("perms") }
 
@@ -153,6 +163,22 @@ class MainActivity : ComponentActivity() {
                 override fun onPageFinished(view: WebView, url: String?) {
                     pageReady = true
                     matchBars()
+                }
+            }
+            webChromeClient = object : WebChromeClient() {
+                override fun onShowFileChooser(view: WebView, cb: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
+                    fileCb?.onReceiveValue(null)
+                    fileCb = cb
+                    val images = params.acceptTypes.any { it.startsWith("image") }
+                    val intent = if (images && Build.VERSION.SDK_INT >= 33) Intent(MediaStore.ACTION_PICK_IMAGES).setType("image/*")
+                    else runCatching { params.createIntent() }.getOrNull() ?: Intent(Intent.ACTION_GET_CONTENT).setType("image/*")
+                    return try {
+                        fileLauncher.launch(intent)
+                        true
+                    } catch (e: Exception) {
+                        fileCb = null
+                        false
+                    }
                 }
             }
             addJavascriptInterface(native, JS_NAME)

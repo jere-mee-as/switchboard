@@ -672,6 +672,29 @@ img{max-width:100%}
 .sh-head .tile.gear{background:var(--raise);color:var(--ink)}
 .gearqa{grid-template-columns:repeat(4,1fr)}
 .gearqa button{animation:rowIn .4s var(--spring) both;text-align:center;line-height:1.15}
+.av.me.pic{color:transparent;background-color:var(--raise)}
+.me-pic{position:relative;border-radius:50%;flex:none}
+.me-pic .cam{position:absolute;right:2px;bottom:2px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--list);box-shadow:0 0 0 3px var(--list)}
+.you .banner{cursor:pointer}
+.you .banner .icon-btn,.you .banner .grab{z-index:1}
+.cropper{position:absolute;inset:0;z-index:58;background:#000;display:flex;flex-direction:column;color:#fff;animation:crIn .3s var(--glide)}
+.cropper.out{opacity:0;transition:opacity .2s}
+@keyframes crIn{from{opacity:0;transform:scale(1.03)}}
+.cr-head{display:flex;align-items:center;gap:8px;padding:12px;flex:none}
+.cr-head b{flex:1;text-align:center;font-size:16px}
+.cr-head .btn{background:rgba(255,255,255,.12);color:#fff}
+.cr-head .btn.pri{background:var(--brass);color:var(--brass-ink)}
+.cr-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none}
+.cr-stage img{position:absolute;max-width:none;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.cr-frame{position:absolute;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.62);border:2px solid rgba(255,255,255,.9);border-radius:10px}
+.cr-frame.cr-avatar{border-radius:50%}
+.cr-foot{display:flex;align-items:center;gap:10px;padding:14px 18px calc(18px + env(safe-area-inset-bottom,0px));flex:none;flex-wrap:wrap}
+.cr-foot input{flex:1;accent-color:var(--brass)}
+.cr-tip{width:100%;text-align:center;font-size:12.5px;color:rgba(255,255,255,.6)}
+.nrow{position:relative;overflow:hidden}
+.nrow.swiping{transition:background .15s}
+.nrow.past{background:color-mix(in srgb,var(--call) 16%,transparent)}
+#v-activity{touch-action:pan-y}
 .findbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:8px;margin:8px 12px 4px;padding:0 12px;height:44px;border-radius:12px;
   background:var(--field);color:var(--ink-3);box-shadow:0 6px 14px -8px rgba(0,0,0,.5)}
 .findbar input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;color:var(--ink);font:16px var(--font-ui)}
@@ -1614,10 +1637,133 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     const b = badgeApp ? `<span class="badge-app"><img src="${esc(badgeApp.icon)}" alt=""></span>` : '';
     if (o.img) return `<span class="av app ${cls}"><img src="${esc(o.img)}" alt="">${b}</span>`;
     if (o.kind === 'op') return `<span class="av op ${cls}">${ic('jack', 'sm')}</span>`;
-    if (o.kind === 'me') return `<span class="av me ${cls}">${esc(initials(D.passport.name))}</span>`;
+    if (o.kind === 'me') return `<span class="av me ${cls}${PIC.url.avatar ? ' pic' : ''}" style="${avStyle()}">${esc(initials(D.passport.name))}</span>`;
     return `<span class="av c${1 + (hashN(norm(o.name)) % 8)} ${cls}">${esc(initials(o.name))}${b}</span>`;
   }
-  const meAv = (cls = '') => `<span class="av me ${cls}">${esc(initials(D.passport.name))}${D.dnd ? '<span class="st dnd"></span>' : ''}</span>`;
+  const meAv = (cls = '') => `<span class="av me ${cls}${PIC.url.avatar ? ' pic' : ''}" style="${avStyle()}">${esc(initials(D.passport.name))}${D.dnd ? '<span class="st dnd"></span>' : ''}</span>`;
+
+  /* ---------- pictures: banner and profile picture (any image or GIF), with a chosen area ---------- */
+  // The file lives in IndexedDB (GIFs can be big); D.pics keeps the area: centre point (cx, cy, 0–1 of the image),
+  // zoom z (1 = just covers the frame) and the image's own size.
+  const PIC = { db: null, url: {} };
+  const BANNER_H = 148;
+  function picDb() {
+    return PIC.db || (PIC.db = new Promise((res, rej) => {
+      const r = indexedDB.open('sb-pics', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('p');
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    }));
+  }
+  async function picIO(k, blob) {
+    const db = await picDb();
+    return new Promise(res => {
+      const st = db.transaction('p', blob === undefined ? 'readonly' : 'readwrite').objectStore('p');
+      const q = blob === undefined ? st.get(k) : blob === null ? st.delete(k) : st.put(blob, k);
+      q.onsuccess = () => res(q.result || null); q.onerror = () => res(null);
+    });
+  }
+  async function loadPics() {
+    for (const k of ['banner', 'avatar']) {
+      try { const b = D.pics && D.pics[k] ? await picIO(k) : null; if (b) PIC.url[k] = URL.createObjectURL(b); } catch (e) { /* no storage */ }
+    }
+    if (PIC.url.banner || PIC.url.avatar) renderAll();
+  }
+  // CSS background that shows the chosen area of the picture in a W×H frame (only the ratio matters).
+  function picCss(k, W, H) {
+    const m = D.pics && D.pics[k], u = PIC.url[k];
+    if (!m || !u) return '';
+    const s = Math.max(W / m.w, H / m.h) * m.z, iw = m.w * s, ih = m.h * s;
+    const px = iw - W > 0.5 ? Math.min(100, Math.max(0, (m.cx * iw - W / 2) / (iw - W) * 100)) : 50;
+    const py = ih - H > 0.5 ? Math.min(100, Math.max(0, (m.cy * ih - H / 2) / (ih - H) * 100)) : 50;
+    return `background-image:url('${u}');background-size:${(iw / W * 100).toFixed(2)}% ${(ih / H * 100).toFixed(2)}%;background-position:${px.toFixed(2)}% ${py.toFixed(2)}%;background-repeat:no-repeat`;
+  }
+  const avStyle = () => picCss('avatar', 1, 1);
+  const bannerW = () => ($('#you') && $('#you').clientWidth) || $('#app').clientWidth;
+  function pickPic(kind) {
+    const i = document.createElement('input');
+    i.type = 'file'; i.accept = 'image/*';
+    i.onchange = () => { const f = i.files && i.files[0]; if (f) cropPic(kind, f, null); };
+    i.click();
+  }
+  // "Choose the area": drag to move, pinch (or the slider) to zoom, inside the exact frame it will fill.
+  function cropPic(kind, blob, meta) {
+    const url = blob ? URL.createObjectURL(blob) : PIC.url[kind];
+    const img = new Image();
+    img.onload = () => {
+      const app = $('#app'), w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+      const st = meta ? { cx: meta.cx, cy: meta.cy, z: meta.z } : { cx: 0.5, cy: 0.5, z: 1 };
+      const el = document.createElement('div');
+      el.className = 'cropper'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Choose the area');
+      el.innerHTML = `<div class="cr-head"><button class="btn" data-cr="cancel">Cancel</button><b>Choose the area</b><button class="btn pri" data-cr="save">Save</button></div>` +
+        `<div class="cr-stage"><img alt="" draggable="false"><div class="cr-frame cr-${kind}"></div></div>` +
+        `<div class="cr-foot"><span>${ic('search', 'sm')}</span><input type="range" min="1" max="5" step="0.01" value="${st.z}" aria-label="Zoom"><span class="cr-tip">Drag to move · pinch to zoom</span></div>`;
+      app.appendChild(el);
+      const stage = el.querySelector('.cr-stage'), im = el.querySelector('img'), fr = el.querySelector('.cr-frame'), zr = el.querySelector('input');
+      im.src = url;
+      let F;
+      const layout = () => {
+        const SW = stage.clientWidth, SH = stage.clientHeight;
+        const fw = kind === 'banner' ? Math.min(SW - 24, 560) : Math.min(SW - 80, SH - 80, 300);
+        const fh = kind === 'banner' ? fw * BANNER_H / bannerW() : fw;
+        F = { x: (SW - fw) / 2, y: (SH - fh) / 2, w: fw, h: fh };
+        Object.assign(fr.style, { left: F.x + 'px', top: F.y + 'px', width: fw + 'px', height: fh + 'px' });
+        draw();
+      };
+      const clamp = () => {
+        const s = Math.max(F.w / w, F.h / h) * st.z, hx = F.w / (2 * w * s), hy = F.h / (2 * h * s);
+        st.cx = Math.min(1 - hx, Math.max(hx, st.cx)); st.cy = Math.min(1 - hy, Math.max(hy, st.cy));
+        return s;
+      };
+      const draw = () => {
+        const s = clamp();
+        Object.assign(im.style, { width: w * s + 'px', height: h * s + 'px', left: F.x + F.w / 2 - st.cx * w * s + 'px', top: F.y + F.h / 2 - st.cy * h * s + 'px' });
+        zr.value = st.z;
+      };
+      const P = new Map(); let pinch = null;
+      stage.addEventListener('pointerdown', e => { stage.setPointerCapture(e.pointerId); P.set(e.pointerId, [e.clientX, e.clientY]); if (P.size === 2) { const [a, b] = [...P.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: st.z }; } });
+      stage.addEventListener('pointermove', e => {
+        const prev = P.get(e.pointerId); if (!prev) return;
+        const cur = [e.clientX, e.clientY]; P.set(e.pointerId, cur);
+        if (P.size === 1) {
+          const s = Math.max(F.w / w, F.h / h) * st.z, z = Z();
+          st.cx -= (cur[0] - prev[0]) / z / (w * s); st.cy -= (cur[1] - prev[1]) / z / (h * s);
+        } else if (P.size === 2 && pinch) {
+          const [a, b] = [...P.values()];
+          st.z = Math.min(5, Math.max(1, pinch.z * Math.hypot(a[0] - b[0], a[1] - b[1]) / Math.max(1, pinch.d)));
+        }
+        draw();
+      });
+      const up = e => { P.delete(e.pointerId); if (P.size < 2) pinch = null; };
+      stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+      stage.addEventListener('wheel', e => { e.preventDefault(); st.z = Math.min(5, Math.max(1, st.z * (e.deltaY < 0 ? 1.08 : 0.93))); draw(); }, { passive: false });
+      zr.addEventListener('input', () => { st.z = +zr.value; draw(); });
+      const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 220); S.cropping = null; };
+      S.cropping = close;
+      el.addEventListener('click', async e => {
+        const b = e.target.closest('[data-cr]'); if (!b) return;
+        if (b.dataset.cr === 'cancel') { if (blob) URL.revokeObjectURL(url); return close(); }
+        clamp();
+        if (blob) {
+          await picIO(kind, blob);
+          if (PIC.url[kind]) URL.revokeObjectURL(PIC.url[kind]);
+          PIC.url[kind] = url;
+        }
+        D.pics = Object.assign({}, D.pics, { [kind]: { cx: st.cx, cy: st.cy, z: st.z, w, h } });
+        save(); close(); renderAll(); toast(kind === 'banner' ? 'Banner set' : 'Profile picture set');
+      });
+      requestAnimationFrame(layout);
+    };
+    img.onerror = () => toast("Couldn't open that picture");
+    img.src = url;
+  }
+  function picSheet(kind) {
+    const has = !!(D.pics && D.pics[kind] && PIC.url[kind]), B_ = kind === 'banner';
+    openSheet(`<div class="sh-head">${B_ ? `<span class="tile" style="${picCss('banner', 1, 1)}">${has ? '' : ic('sliders')}</span>` : meAv()}<div class="tt"><b>${B_ ? 'Banner' : 'Profile picture'}</b><small>Any picture or GIF</small></div></div><div class="group">` +
+      row(`data-act="pic-pick" data-v="${kind}"`, ic('plus'), has ? 'Choose a new picture or GIF' : 'Choose a picture or GIF', 'Then pick exactly what shows') +
+      (has ? row(`data-act="pic-crop" data-v="${kind}"`, ic('sliders'), 'Choose the area', 'Move and zoom') : '') +
+      (B_ ? row('data-act="ov" data-v="appearance"', ic('contrast'), 'Banner color', has ? 'Used when there is no picture' : '') : '') +
+      (has ? row(`data-act="pic-del" data-v="${kind}"`, ic('trash'), 'Remove', B_ ? 'Back to the color' : 'Back to your initials', '', 'danger') : '') + '</div>', 'pic');
+  }
   const spaceIcon = s => { const a = spaceApps(s)[0]; return a ? `<img src="${esc(a.icon)}" alt="">` : ic('layers', 'sm'); };
   const btn = (l, a, v = '', s = '') => ({ l, a, v: String(v), s });
   const btnsHtml = list => (list && list.length ? `<div class="btnrow">${list.map(b => `<button class="btn ${b.s || ''}" data-act="b" data-a="${esc(b.a)}" data-v="${esc(b.v)}">${esc(b.l)}</button>`).join('')}</div>` : '');
@@ -1872,8 +2018,15 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       `<span class="nt"><b>${esc(title)}</b><span class="np">${esc(n.text || '')}</span><span class="src">${esc(a ? a.label : n.pkg)}${n.live ? '' : ' · cleared'}</span></span>` +
       `<span class="nm"><time>${ago(n.time)}</time>${fresh && !isConvo(n) ? '<span class="dotlamp"></span>' : ''}</span></button>`;
   }
+  function clearNotif(id) {
+    const n = S.notifs.find(x => x.id === id);
+    if (n && n.live) B.notifDismiss(id);
+    D.gone = arr(D.gone).concat(id).slice(-400); save();
+    renderActivity(); renderTabs();
+  }
   function renderActivity() {
-    const list = S.notifs.filter(n => !isConvo(n) && !muted(n.pkg)).slice().sort((a, b) => b.time - a.time).slice(0, 80);
+    const gone = new Set(arr(D.gone));
+    const list = S.notifs.filter(n => !isConvo(n) && !muted(n.pkg) && !gone.has(n.id)).slice().sort((a, b) => b.time - a.time).slice(0, 80);
     const liveN = list.filter(n => n.live).length;
     let h = `<header class="page-head"><h1>Activity</h1><button class="icon-btn" data-act="mark-read" aria-label="Mark all as read">${ic('checks')}</button></header>`;
     h += `<div class="sect">${ic('calendar', 'xs')}Coming up<span class="n">${upcoming(7).length}</span></div>`;
@@ -1929,10 +2082,10 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     const granted = ['notif', 'calendar', 'contacts', 'dnd', 'phone', 'alarms'].filter(k => p[k]).length;
     const used = dv.total ? dv.total - dv.free : 0;
     const body = $('#youBody'), top = body.scrollTop, tab = S.youTab || 'passport', ti = YTABS.findIndex(t => t[0] === tab);
-    let h = `<div class="banner" style="--bn:${BANNERS[D.banner % BANNERS.length]}"><span class="grab" aria-hidden="true"></span>` +
+    let h = `<div class="banner" data-act="pic-menu" data-v="banner" style="--bn:${BANNERS[D.banner % BANNERS.length]};${picCss('banner', bannerW(), BANNER_H)}"><span class="grab" aria-hidden="true"></span>` +
       `<button class="icon-btn yx" data-act="you-close" aria-label="Close">${ic('x', 'sm')}</button>` +
       `<button class="icon-btn" data-act="ov" data-v="appearance" aria-label="Appearance">${ic('sliders', 'sm')}</button></div>`;
-    h += `<div class="me-block"><div class="me-top">${meAv()}<button class="bubble ${pp.status ? '' : 'empty'}" data-act="ov" data-v="passport" data-id="status">${pp.status ? esc(pp.status) : '+ Add a status'}</button></div>` +
+    h += `<div class="me-block"><div class="me-top"><button class="me-pic" data-act="pic-menu" data-v="avatar" aria-label="Profile picture">${meAv()}<span class="cam">${ic('cam', 'xs')}</span></button><button class="bubble ${pp.status ? '' : 'empty'}" data-act="ov" data-v="passport" data-id="status">${pp.status ? esc(pp.status) : '+ Add a status'}</button></div>` +
       `<div><h2>${esc(pp.name)}</h2><div class="me-handle">${pp.note ? `<span>${esc(pp.note)}</span>` : ''}${D.dnd ? '<span class="dndchip">Do Not Disturb</span>' : ''}</div></div>` +
       `<div class="me-btns"><button class="btn pri" data-act="ov" data-v="passport">${ic('edit')}Edit passport</button><button class="btn" data-act="qr-big">${ic('qr')}Share</button></div></div>`;
     h += `<nav class="ytabs" role="tablist">${YTABS.map(([k, l]) => `<button class="${k === tab ? 'on' : ''}" role="tab" aria-selected="${k === tab}" data-act="you-tab" data-v="${k}">${l}</button>`).join('')}<i style="transform:translateX(${Math.max(0, ti) * 100}%)"></i></nav>`;
@@ -2247,6 +2400,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
   }
   function setSpace(id) { S.space = id; store.set('space', id); renderRail(); renderList(); }
   function back() {
+    if (S.cropping) return S.cropping();
     if (S.sheet) return closeSheet();
     if (!$('#picker').hidden) return hidePicker();
     if (S.ov) return closeOverlay();
@@ -3190,7 +3344,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
         (ia ? `<div class="chan unread"><img class="ai" src="${esc(ia.icon)}" alt=""><span class="cl">${esc(ia.label)}</span><span class="count">4</span></div>` : '') +
         (ib ? `<div class="chan unread"><img class="ai" src="${esc(ib.icon)}" alt=""><span class="cl">${esc(ib.label)}</span><span class="dotlamp"></span></div>` : '') +
         `<div class="fs-msgs"><article class="msg head"><span class="av op">${ic('jack', 'sm')}</span><div class="mc"><div class="who"><b>${esc(f.bot)}</b><span class="tag sys">SYS</span></div><div class="tx">Looking good.</div></div></article>` +
-        `<article class="msg head mine"><span class="av me">${esc(initials(D.passport.name))}</span><div class="mc"><div class="who"><b>${esc(first(D.passport.name))}</b></div><div class="tx"><code class="cmd">/party</code></div></div></article></div></div></div>`;
+        `<article class="msg head mine"><span class="av me${PIC.url.avatar ? ' pic' : ''}" style="${avStyle()}">${esc(initials(D.passport.name))}</span><div class="mc"><div class="who"><b>${esc(first(D.passport.name))}</b></div><div class="tx"><code class="cmd">/party</code></div></div></article></div></div></div>`;
       const sect = (label, k) => `<div class="label">${label}</div>${seg(k)}`;
       h = ovHead('Fun stuff') + `<div class="ov-body" id="funBody">${sample}` +
         `<div class="label">Accent</div><div class="swatches">${Object.entries(ACCENTS).map(([k, [c, , l]]) => `<button class="sw ${f.accent === k ? 'on' : ''}" style="background:${c}" data-act="fun" data-k="accent" data-v="${k}" aria-label="${l}" title="${l}"></button>`).join('')}</div>` +
@@ -3381,6 +3535,14 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       save(); t.querySelector('.check').classList.toggle('on'); renderRail();
     },
     'sp-rename': t => renameSheet(t.dataset.id),
+    'pic-menu': t => picSheet(t.dataset.v),
+    'pic-pick': t => { closeSheet(); pickPic(t.dataset.v); },
+    'pic-crop': t => { closeSheet(); cropPic(t.dataset.v, null, D.pics[t.dataset.v]); },
+    'pic-del': async t => {
+      const k = t.dataset.v; closeSheet();
+      await picIO(k, null); if (PIC.url[k]) URL.revokeObjectURL(PIC.url[k]); delete PIC.url[k];
+      if (D.pics) delete D.pics[k]; save(); renderAll(); toast('Removed');
+    },
     gear: t => {
       const k = t.dataset.v || 'main';
       if (k === 'files') { closeSheet(); const a = filesApp(); return a ? launchApp(a) : B.settings('storage'); }
@@ -3520,14 +3682,33 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     const W = () => app.clientWidth, PW = () => app.clientWidth * 0.84;
     const posX = p => (p === 'list' ? W() : p === 'people' ? -PW() : 0);
     // Touch uses touch events (they keep coming even if the browser starts scrolling and cancels the pointer); mouse uses pointer events.
+    // A notification swiped right far enough (or flicked) slides off, folds away and is cleared from the shade too.
+    function swipeOff(g) {
+      const r = g.row, h0 = g.hist[0], h1 = g.hist[g.hist.length - 1];
+      const v = h0 && h1 && h1 !== h0 ? (h1[1] - h0[1]) / Math.max(16, h1[0] - h0[0]) : 0;
+      r.classList.remove('swiping');
+      if (!(g.rx > r.offsetWidth * 0.35 || (v > 0.45 && g.rx > 24))) {
+        r.classList.add('springback'); r.style.transform = ''; r.style.opacity = ''; r.classList.remove('past');
+        return setTimeout(() => r.classList.remove('springback'), 560);
+      }
+      const id = r.dataset.id;
+      r.style.transition = 'transform .22s ease-in, opacity .22s';
+      r.style.transform = 'translate3d(110%,0,0)'; r.style.opacity = '0';
+      setTimeout(() => {
+        r.style.height = r.offsetHeight + 'px'; void r.offsetHeight;
+        r.style.transition = 'height .22s var(--glide), padding .22s'; r.style.height = '0px'; r.style.paddingTop = r.style.paddingBottom = '0px';
+      }, 200);
+      setTimeout(() => clearNotif(id), 440);
+    }
     function swStart(x, y, target, id) {
       if (S.wide || S.sheet || S.ov || S.you || S.drag) return;
       if (target.closest('textarea,input,.picker,.favs,.seg,.nowbar,.tabs,.az')) return;
       let zone = null;
       if (target.closest('#chat') || (S.pos === 'people' && target.closest('#people'))) zone = 'chat';
+      else if (S.pos === 'list' && target.closest('#v-activity .nrow')) zone = 'row';   // swipe right clears it; left still goes to #feed
       else if (S.pos === 'list' && target.closest('#views')) zone = 'home';   // any list: Home, a space, Messages, Activity
       if (!zone) return;
-      d = { x0: x, y0: y, t0: performance.now(), base: posX(S.pos), on: false, id, zone, x: posX(S.pos), hist: [] };
+      d = { x0: x, y0: y, t0: performance.now(), base: posX(S.pos), on: false, id, zone, x: posX(S.pos), hist: [], row: zone === 'row' ? target.closest('.nrow') : null };
     }
     function swMove(x, y, pointerId) {
       if (!d) return;
@@ -3537,12 +3718,25 @@ if (typeof module !== 'undefined') module.exports = SBQR;
         // Generous: a mostly-sideways move wins, even a slanted one.
         if (Math.abs(dy) > 22 && Math.abs(dy) > Math.abs(dx) * 1.7) { d = null; return; }
         if (Math.abs(dx) < 7 || Math.abs(dx) < Math.abs(dy) * 0.75) return;
+        if (d.zone === 'row') {
+          if (dx < 0) d.zone = 'home';
+          else { d.on = true; cancelLp(); unpress(); d.row.classList.add('swiping'); return; }
+        }
         if (d.zone === 'home' && dx > 0) { d = null; return; }
         if (d.base === -PW() && dx < 0) { d = null; return; }
         d.on = true; cancelLp(); unpress();
         if (d.zone === 'home') { if (S.ch !== 'home:feed') { S.ch = 'home:feed'; S.reply = null; } S.enterSeen = D.seen[S.ch] || 0; renderChat(); }
         chat.classList.add('drag');
         if (pointerId != null) { try { app.setPointerCapture(pointerId); } catch (_) { /* ignore */ } }
+      }
+      if (d.zone === 'row') {
+        const rx = Math.max(0, dx / Z()), rw = d.row.offsetWidth, nowR = performance.now();
+        d.rx = rx; d.hist.push([nowR, rx]); while (d.hist.length > 2 && nowR - d.hist[0][0] > 90) d.hist.shift();
+        d.row.style.transform = `translate3d(${rx}px,0,0)`;
+        d.row.style.opacity = String(Math.max(0.25, 1 - rx / rw));
+        const past = rx > rw * 0.35;
+        if (past !== !!d.past) { d.past = past; d.row.classList.toggle('past', past); if (past && B.haptic) B.haptic('tick'); }
+        return;
       }
       d.x = Math.max(-PW(), Math.min(W(), d.base + dx / Z()));
       const nowT = performance.now();
@@ -3555,6 +3749,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       const g = d; d = null;
       if (!g.on) return;
       dragEnd = performance.now();
+      if (g.zone === 'row') return swipeOff(g);
       chat.classList.remove('drag'); chat.style.transform = '';
       // Speed over the last ~90 ms, so a flick at the end counts even after a slow start.
       const h0 = g.hist[0] || [g.t0, g.base], h1 = g.hist[g.hist.length - 1] || [performance.now(), g.x];
@@ -3841,6 +4036,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     if (!S.wide) setPos('list');
     renderAll();
     setInterval(() => { if (document.hidden) return; checkReminders(); renderTabs(); if (S.tab === 'home') renderList(); else renderPage(); }, 30000);
+    loadPics();
     if (B.ready) B.ready();   // tells the app this page started fine (a downloaded page that doesn't is rolled back)
     noteNewPage();
   }
