@@ -2451,7 +2451,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       bt.push(btn('Open', 'open', n.id));
       if (isConvo(n)) bt.push(btn('Thread', 'thread', convoKey(n)));
     }
-    return `<div class="tx">${head ? `<strong>${esc(head)}</strong>${text ? '\n' : ''}` : ''}${fmt(text)}</div>` + (n.live ? btnsHtml(bt) : '<div class="cleared">cleared from the shade</div>');
+    return `<div class="tx">${head ? `<strong>${esc(head)}</strong>${text ? '\n' : ''}` : ''}${fmt(text)}</div>` + (n.live ? btnsHtml(bt) : '');
   }
   function embedHtml(e) {
     if (!e) return '';
