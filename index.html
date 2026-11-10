@@ -3549,7 +3549,8 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       feed: { dir: 1, label: () => `${ic('hash', 'xs')}feed`, run: () => openFeedFromTop() },
       all: { dir: -1, label: () => `${ic('grid', 'xs')}All apps`, run: () => setSpace('all') },
       home: { dir: 1, label: () => `${ic('panel', 'xs')}Home`, run: () => setSpace('home') },
-      back: { dir: -1, label: () => `${ic('home', 'xs')}Back to the list`, run: () => closeChatUp() },
+      back: { dir: 1, label: () => `${ic('back', 'xs')}Back`, run: () => closeOverlay() },
+      up: { dir: -1, label: () => `${ic('home', 'xs')}Back to the list`, run: () => closeChatUp() },
       shade: { dir: 1, label: () => `${ic('bell', 'xs')}Notifications`, run: () => B.shade() },
       sheet: { dir: 1, follow: '#sheet', run: () => closeSheet() },
       you: { dir: 1, follow: '#you', run: () => closeYou() }
@@ -3558,10 +3559,12 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       if (sc.matches('.sheet-body')) return dir > 0 ? 'sheet' : null;
       if (sc.matches('.you-body')) return dir > 0 ? 'you' : null;
       if (sc.matches('.rail')) return dir > 0 ? 'shade' : null;
-      if (sc.matches('#msgs')) return dir < 0 && !S.wide && S.pos === 'chat' ? 'back' : null;
-      // In All apps, pulling past the top goes back Home (the #feed bar stays right there at the top).
+      if (sc.matches('#msgs')) return dir < 0 && !S.wide && S.pos === 'chat' ? 'up' : null;
+      // #feed only drops in from Home and the spaces. In All apps, pulling past the top goes back Home.
       if (sc.matches('.chan-scroll')) return dir > 0 ? (S.space === 'all' ? 'home' : 'feed') : S.space !== 'all' ? 'all' : null;
-      return dir > 0 ? 'feed' : null;   // Messages, Activity, overlays (adding apps to a space, settings…)
+      // Settings and other full pages: pulling down goes back to where you opened them from (not the passport editor, which would lose your typing).
+      if (sc.matches('.ov-body')) return dir > 0 && S.ov && S.ov.kind !== 'passport' ? 'back' : null;
+      return null;   // Messages, Activity: just the springy stretch
     }
     let rb = null;
     const damp = y => Math.sign(y) * 110 * (1 - Math.exp(-Math.abs(y) / 260));
@@ -3602,7 +3605,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       const a = rb.act && ACTS[rb.act];
       const off = a && a.follow ? rb.dy : damp(rb.dy);
       rb.el.style.transform = `translate3d(0,${rb.dir * off}px,0)`;
-      const need = a && a.follow ? 110 : 84;
+      const need = a && a.follow ? 110 : rb.act === 'feed' ? 135 : 90;   // #feed wants a deliberate pull
       const ready = !!a && rb.dy >= need;
       if (ready !== rb.ready) { rb.ready = ready; if (ready && B.haptic) B.haptic('tick'); cue.classList.toggle('ready', ready); }
       if (a && a.label) {
