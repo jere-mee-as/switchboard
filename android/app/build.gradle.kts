@@ -36,6 +36,7 @@ android {
         releaseKeystore?.let { path ->
             create("release") {
                 storeFile = file(path)
+                storeType = if (path.endsWith(".p12")) "pkcs12" else "jks"
                 storePassword = System.getenv("SB_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("SB_KEY_ALIAS")
                 keyPassword = System.getenv("SB_KEY_PASSWORD")

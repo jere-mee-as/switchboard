@@ -17,7 +17,7 @@ Release: Actions → **Release APK** → **Run workflow** builds the APK and pub
 
 ## Status
 
-Page v0.4, Android app 0.3.0. **Updates:** type `/update` in #feed (or You → Launcher → Check for updates). It installs the latest release over the old app (Android asks you to confirm) and pulls the newest page from `main`, which shows with no install at all; the app also fetches a newer page by itself every few hours and switches next time you come home. A downloaded page that fails to start is thrown away automatically (`/update reset` does it by hand). Releases are signed with the permanent key in the `SB_KEYSTORE_*` secrets (backup: Proton Drive `Claude Things/Setup/keys/`). Gestures: pull down past the top of any list for #feed, pull up past the end of Home or a space for All apps, pull up past the newest message to go back, pull down on the rail for the notification shade. Hold a space and drag it to reorder.
+Page v0.4, Android app 0.3.0. **Updates:** type `/update` in #feed (or You → Launcher → Check for updates). It installs the latest release over the old app (Android asks you to confirm) and pulls the newest page from `main`, which shows with no install at all; the app also fetches a newer page by itself every few hours and switches next time you come home. A downloaded page that fails to start is thrown away automatically (`/update reset` does it by hand). Releases are signed with the permanent key in the `SB_KEYSTORE_B64` secret (backup: Proton Drive `Claude Things/Setup/keys/`). Gestures: pull down past the top of any list for #feed, pull up past the end of Home or a space for All apps, pull up past the newest message to go back, pull down on the rail for the notification shade. Hold a space and drag it to reorder.
 
 ## Docs
 

@@ -5,9 +5,10 @@
 # version replaces that release's APK. Newest release, always:
 #   https://github.com/jere-mee-as/switchboard/releases/latest/download/switchboard.apk
 #
-# Signing secrets (Settings > Secrets and variables > Actions): SB_KEYSTORE_B64 (base64 of the .jks),
-# SB_KEYSTORE_PASSWORD, SB_KEY_ALIAS, SB_KEY_PASSWORD. Without them the APK is debug-signed, and each
-# build then has a different key (uninstall before installing the next one).
+# Signing: one secret, SB_KEYSTORE_B64 (base64 of the PKCS12 keystore; backup in Proton Drive
+# Claude Things/Setup/keys). Its password and alias are below; the keystore file itself is the secret.
+# SB_KEYSTORE_PASSWORD / SB_KEY_ALIAS / SB_KEY_PASSWORD secrets override them if set.
+# Without SB_KEYSTORE_B64 the APK is debug-signed, and each build then has a different key.
 name: Release APK
 
 on:
@@ -42,7 +43,7 @@ jobs:
           SB_KEYSTORE_B64: ${{ secrets.SB_KEYSTORE_B64 }}
         run: |
           if [ -n "$SB_KEYSTORE_B64" ]; then
-            ks="$RUNNER_TEMP/release.jks"
+            ks="$RUNNER_TEMP/release.p12"
             echo "$SB_KEYSTORE_B64" | base64 --decode > "$ks"
             echo "SB_KEYSTORE_PATH=$ks" >> "$GITHUB_ENV"
           else
@@ -51,16 +52,16 @@ jobs:
 
       - name: Build release APK
         env:
-          SB_KEYSTORE_PASSWORD: ${{ secrets.SB_KEYSTORE_PASSWORD }}
-          SB_KEY_ALIAS: ${{ secrets.SB_KEY_ALIAS }}
-          SB_KEY_PASSWORD: ${{ secrets.SB_KEY_PASSWORD }}
+          SB_KEYSTORE_PASSWORD: ${{ secrets.SB_KEYSTORE_PASSWORD || 'switchboard-key' }}
+          SB_KEY_ALIAS: ${{ secrets.SB_KEY_ALIAS || 'switchboard' }}
+          SB_KEY_PASSWORD: ${{ secrets.SB_KEY_PASSWORD || 'switchboard-key' }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
 
       - name: Remove keystore
         if: always()
-        run: rm -f "$RUNNER_TEMP/release.jks"
+        run: rm -f "$RUNNER_TEMP/release.p12"
 
       - name: Publish release
         env:
