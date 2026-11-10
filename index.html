@@ -1391,7 +1391,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
   if (!/^(home:|dm:)/.test(D.lastCh || '') && !/:activity$/.test(D.lastCh || '')) D.lastCh = 'home:feed';
   D.fun = Object.assign({}, FUN_DEF, D.fun || {});
   let saveT = 0;
-  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => store.set('data', D), 120); };
+  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { if (!S.restoring) store.set('data', D); }, 120); };
   const S = {
     apps: [], byKey: new Map(), byPkg: new Map(), notifs: [], media: null, events: [], contacts: [],
     battery: null, device: null, perms: {}, torch: false,
@@ -1683,6 +1683,52 @@ if (typeof module !== 'undefined') module.exports = SBQR;
   }
   const avStyle = () => picCss('avatar', 1, 1);
   const bannerW = () => ($('#you') && $('#you').clientWidth) || $('#app').clientWidth;
+  /* ---------- backup and restore: every setting, plus your pictures, in one file ---------- */
+  const blobToData = b => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(''); r.readAsDataURL(b); });
+  async function backupText(withPics = true) {
+    save(); await new Promise(r => setTimeout(r, 160));   // let the pending save land
+    const st = {};
+    for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('sb.')) st[k] = localStorage.getItem(k); }
+    const pics = {};
+    if (withPics) for (const k of Object.keys(D.pics || {})) { try { const b = await picIO(k); if (b) pics[k] = await blobToData(b); } catch (e) { /* skip */ } }
+    return JSON.stringify({ app: 'switchboard', v: 1, at: now(), version: B.version() || '', store: st, pics });
+  }
+  async function doBackup() {
+    const t = await backupText(true), d = new Date();
+    const name = `switchboard-backup-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.json`;
+    if (B.shareFile && B.shareFile(name, 'application/json', t)) { D.lastBackup = now(); save(); return toast('Save it to Drive, Proton or Files'); }
+    copy(await backupText(false)); toast('Backup copied (without pictures). Paste it into a note.');
+  }
+  function restorePick() {
+    const i = document.createElement('input');
+    i.type = 'file'; i.accept = '*/*';
+    i.onchange = async () => { const f = i.files && i.files[0]; if (f) restoreConfirm(await f.text()); };
+    i.click();
+  }
+  function restoreConfirm(text) {
+    let b; try { b = JSON.parse(String(text).trim()); } catch (e) { b = null; }
+    if (!b || b.app !== 'switchboard' || !b.store) return toast("That isn't a Switchboard backup");
+    S.restoreData = b;
+    openSheet(`<div class="sh-head"><span class="tile">${ic('down')}</span><div class="tt"><b>Restore this backup?</b><small>From ${esc(new Date(b.at || 0).toLocaleString())}${b.version ? ' · Switchboard ' + esc(b.version) : ''}</small></div></div>` +
+      `<div class="empty-note">Your spaces, pinned apps, passport, notes, reminders, theme and ${Object.keys(b.pics || {}).length ? 'pictures' : 'everything else'} go back to how they were then. What's on the phone now is replaced.</div>` +
+      `<div class="qr-btns" style="padding-bottom:8px"><button class="btn" data-act="close-sheet">Cancel</button><button class="btn pri" data-act="restore-go">Restore</button></div>`, 'restore');
+  }
+  async function restoreGo() {
+    const b = S.restoreData; if (!b) return;
+    for (const k of Object.keys(localStorage)) if (k.startsWith('sb.')) localStorage.removeItem(k);
+    for (const [k, v] of Object.entries(b.store)) if (k.startsWith('sb.')) localStorage.setItem(k, v);
+    for (const k of ['banner', 'avatar']) {
+      try { if (b.pics && b.pics[k]) await picIO(k, await (await fetch(b.pics[k])).blob()); else await picIO(k, null); } catch (e) { /* skip */ }
+    }
+    clearTimeout(saveT); S.restoring = true;   // don't let a pending save overwrite what was just restored
+    toast('Restored. Reloading…');
+    setTimeout(() => location.reload(), 500);
+  }
+  function restoreSheet() {
+    openSheet(`<div class="sh-head"><span class="tile">${ic('down')}</span><div class="tt"><b>Restore from a backup</b><small>A switchboard-backup file, or text you pasted somewhere</small></div></div><div class="group">` +
+      row('data-act="restore-file"', ic('folder'), 'Choose the backup file', 'From Drive, Proton, Downloads…') +
+      row('data-act="restore-paste"', ic('copy'), 'Paste backup text', 'If you copied it instead') + '</div>', 'restore');
+  }
   function pickPic(kind) {
     const i = document.createElement('input');
     i.type = 'file'; i.accept = 'image/*';
@@ -2137,6 +2183,8 @@ if (typeof module !== 'undefined') module.exports = SBQR;
         row('data-act="ov" data-v="spaces"', ic('layers'), 'Spaces', 'Order, names, which apps go where', `<span class="rv">${arr(D.spaces).length}</span>`) +
         row('data-act="ov" data-v="hidden"', ic('eye-off'), 'Hidden apps', '', `<span class="rv">${D.hidden.length}</span>`) +
         row('data-act="b" data-a="upd-check" data-v=""', ic('down'), 'Check for updates', 'Same as /update in #feed', ic('chev-r', 'sm')) +
+        row('data-act="backup"', ic('share'), 'Back up settings', D.lastBackup ? 'Last backup ' + stamp(D.lastBackup) : 'Spaces, passport, pictures, everything, in one file', ic('chev-r', 'sm')) +
+        row('data-act="restore"', ic('folder'), 'Restore from a backup', 'After a reinstall, or on a new phone', ic('chev-r', 'sm')) +
         (p.isHome ? '' : row('data-act="set-home"', ic('home'), 'Make Switchboard your home screen', 'Choose it in the home app picker', ic('chev-r', 'sm'))) +
         `</div><div class="foot">${ic('jack', 'xs')}Switchboard <code>${esc(B.version() || '')}</code>${(B.updateInfo() || {}).onLive ? ' · page from GitHub' : ''}</div>`;
     }
@@ -2803,6 +2851,8 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     sys('sliders', `Opened <b>${esc(k === 'main' ? 'Settings' : k)}</b>`);
   }, { icon: 'sliders', group: 'Phone', wait: true, sug: r => opts('Settings', 'sliders', ['wifi', 'bluetooth', 'display', 'sound', 'battery', 'apps', 'home'], r, x => ({ fill: '/settings ' + x, submit: true })) });
   def('shade', '', 'Pull down notifications', () => B.shade(), { icon: 'bell', group: 'Phone' });
+  def('backup', '', 'Save all your settings to a file', () => { op('Making your backup…'); doBackup(); }, { icon: 'share', group: 'Launcher' });
+  def('restore', '', 'Bring settings back from a backup', () => restoreSheet(), { icon: 'folder', group: 'Launcher' });
   def('update', '[app · page · reset]', 'Get the newest Switchboard from GitHub', r => {
     const k = norm(r);
     if (k === 'reset') { op('Going back to the page built into the app…'); return setTimeout(() => B.resetPage(), 400); }
@@ -3569,6 +3619,17 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     },
     'sp-rename': t => renameSheet(t.dataset.id),
     'pic-menu': t => picSheet(t.dataset.v),
+    'backup': () => { closeSheet(); doBackup(); },
+    'restore': () => restoreSheet(),
+    'restore-file': () => { closeSheet(); restorePick(); },
+    'restore-paste': () => {
+      openSheet(`<div class="sh-head"><span class="tile">${ic('copy')}</span><div class="tt"><b>Paste your backup</b><small>The whole thing, starting with {"app":"switchboard"</small></div></div>` +
+        `<textarea class="inp" id="rsText" style="height:140px;padding:10px 14px;resize:none;font:13px var(--font-mono)" spellcheck="false"></textarea>` +
+        `<div style="padding:12px"><button class="btn pri wide" data-act="restore-text">Check backup</button></div>`, 'restore');
+      setTimeout(() => { const t = $('#rsText'); if (t) t.focus({ preventScroll: true }); }, 60);
+    },
+    'restore-text': () => restoreConfirm(($('#rsText') || {}).value || ''),
+    'restore-go': () => restoreGo(),
     'send-card': async () => {
       const v = await cardFile(), name = (D.passport.name || 'contact').trim() + '.vcf';
       if (B.shareFile && B.shareFile(name, 'text/x-vcard', v)) return;
