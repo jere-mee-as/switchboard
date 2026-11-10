@@ -854,6 +854,7 @@ img{max-width:100%}
   <symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01" stroke-width="2.6"/></symbol>
   <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/></symbol>
   <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2"/><path d="M4 7l8 6 8-6"/></symbol>
+ <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8l1.6 2.4 2.8-.7.7 2.8 2.4 1.6-1.3 2.6 1.3 2.6-2.4 1.6-.7 2.8-2.8-.7L12 21.2l-1.6-2.4-2.8.7-.7-2.8-2.4-1.6 1.3-2.6-1.3-2.6 2.4-1.6.7-2.8 2.8.7z"/></symbol>
   <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.3a9.5 9.5 0 0 1 13 0M8.6 15.5a5 5 0 0 1 6.8 0"/><path d="M12 19h.01" stroke-width="2.8"/></symbol>
   <symbol id="i-bt" viewBox="0 0 24 24"><path d="M7 7.5l10 9-5 4.5V3l5 4.5-10 9"/></symbol>
@@ -3004,9 +3005,11 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       row(`data-act="sp-del" data-id="${esc(id)}"`, ic('trash'), 'Delete space', 'Apps stay installed and in All apps', '', 'danger') + '</div>', 'space');
   }
   // The gear at the bottom of the rail: tap for the phone's Settings, hold for shortcuts.
-  const GEAR = [['wifi', 'wifi', 'Wi-Fi'], ['bluetooth', 'bt', 'Bluetooth'], ['display', 'sun', 'Display'], ['sound', 'speaker', 'Sound'],
+  const GEAR = [['files', 'folder', 'My Files'], ['wifi', 'wifi', 'Wi-Fi'], ['bluetooth', 'bt', 'Bluetooth'], ['display', 'sun', 'Display'], ['sound', 'speaker', 'Sound'],
     ['battery', 'battery', 'Battery'], ['notifications', 'bell', 'Notifications'], ['location', 'pinmap', 'Location'], ['airplane', 'plane2', 'Airplane'],
-    ['apps', 'grid', 'Apps'], ['storage', 'layers', 'Storage'], ['dnd', 'moon', 'Do Not Disturb'], ['home', 'home', 'Home app']];
+    ['apps', 'grid', 'Apps'], ['storage', 'layers', 'Storage'], ['dnd', 'moon', 'Do Not Disturb']];
+  // Samsung My Files, else Files by Google, else the system file picker app.
+  const filesApp = () => [/myfiles/i, /apps\.nbu\.files/, /documentsui/].map(re => S.apps.find(a => re.test(a.pkg))).find(Boolean);
   function gearSheet() {
     openSheet(`<div class="sh-head"><span class="tile gear">${ic('gear')}</span><div class="tt"><b>Settings</b><small>Phone settings, one tap away</small></div></div>` +
       `<div class="qa gearqa">${GEAR.map(([k, i, l], n) => `<button data-act="gear" data-v="${k}" style="animation-delay:${n * 22}ms">${ic(i)}${l}</button>`).join('')}</div>` +
@@ -3380,6 +3383,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     'sp-rename': t => renameSheet(t.dataset.id),
     gear: t => {
       const k = t.dataset.v || 'main';
+      if (k === 'files') { closeSheet(); const a = filesApp(); return a ? launchApp(a) : B.settings('storage'); }
       if (!t.dataset.v && motionOK()) { t.classList.remove('spin'); void t.offsetWidth; t.classList.add('spin'); }
       closeSheet(); setTimeout(() => B.settings(k), t.dataset.v ? 0 : 160);
     },
