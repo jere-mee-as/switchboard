@@ -399,6 +399,11 @@ img{max-width:100%}
 .check{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);display:grid;place-items:center;flex:none;color:transparent}
 .check.on{background:var(--brass);border-color:var(--brass);color:var(--brass-ink)}
 .check .i{width:16px;height:16px;stroke-width:2.6}
+.row .check:not(.on) .i{color:transparent}
+.row .check.on .i{color:var(--brass-ink)}
+.check{transition:background .15s,border-color .15s}
+.check.on .i{animation:tick .35s var(--spring)}
+@keyframes tick{from{transform:scale(.3)}}
 
 /* ---------- sheet, scrim, toast ---------- */
 .scrim{position:absolute;inset:0;z-index:40;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity .2s}
@@ -576,6 +581,196 @@ img{max-width:100%}
 
 .seg button{text-align:center}
 
+/* ---------- v0.4: motion, highlights, A–Z, pulls, profile sheet ---------- */
+.app{--spring:cubic-bezier(.22,1.28,.36,1);--glide:cubic-bezier(.2,.9,.25,1);
+  --press:color-mix(in srgb,var(--ink) 9%,transparent);--pick:color-mix(in srgb,var(--ink) 13%,transparent)}
+.views{overflow:hidden}
+/* light selection highlight on press and on the app you just opened */
+.app :is(.chan,.convo,.nrow,.mrow,.ev,.row,.pp-row,.lk,.opt,.fav,.cmdrow){transition:background-color .2s ease}
+.app .chan.on,.app .convo.sel{background:var(--pick);color:var(--ink)}
+.app :is(.chan,.convo,.nrow,.mrow,.ev,.pp-row,.lk,.cmdrow).press,.app .row.press{background:var(--press)}
+.app .fav.press .av{transform:scale(.92)}
+.fav .av{transition:transform .25s var(--spring)}
+.chan.picked{animation:picked 1.9s ease-out both}
+.chan.picked img.ai,.mrow.picked .av{animation:lift .55s var(--spring)}
+@keyframes picked{0%,35%{background:var(--pick)}100%{background:transparent}}
+@keyframes lift{35%{transform:scale(1.25) rotate(-5deg)}}
+/* rail: a pill on the edge marks where you are, tiles morph from round to rounded square */
+.tile{transition:background .15s,border-radius .28s var(--spring),transform .2s var(--spring)}
+.app[data-tile="round"] .tile:not(.on):not(.ghost):not(.lifted){border-radius:24px}
+.app[data-tile="round"] .tile:not(.ghost):active{border-radius:15px}
+.tile:active{transform:scale(.93)}
+.tile::before{content:"";position:absolute;left:-12px;top:50%;width:4px;height:0;border-radius:0 4px 4px 0;background:var(--ink);
+  transform:translateY(-50%);transition:height .3s var(--spring);pointer-events:none}
+.tile:has(.lamp):not(.on)::before{height:8px}
+.tile:active::before{height:20px}
+.tile.on::before{height:36px}
+.app[data-rail="right"] .tile::before{left:auto;right:-12px;border-radius:4px 0 0 4px}
+.tile.ghost::before{display:none}
+/* hold a space and drag it to reorder */
+.rail.sorting{overflow:hidden}
+.rail.sorting .tile{transition:transform .22s var(--glide),border-radius .28s var(--spring)}
+.tile.lifted{z-index:3;transition:box-shadow .2s,border-radius .2s!important;
+  box-shadow:0 14px 28px rgba(0,0,0,.45),0 0 0 2px var(--rail),0 0 0 4px var(--brass)}
+.tile.lifted::before{display:none}
+.tile.settle{animation:settle .45s var(--spring)}
+@keyframes settle{0%{transform:scale(1.12)}100%{transform:none}}
+.sort-hint{position:absolute;z-index:6;left:84px;padding:7px 11px;border-radius:10px;background:var(--ink);color:var(--list);
+  font:600 12.5px/1.2 var(--font-ui);pointer-events:none;white-space:nowrap;animation:hintIn .25s var(--spring) both}
+.app[data-rail="right"] .sort-hint{left:auto;right:84px}
+@keyframes hintIn{from{opacity:0;transform:translateX(-8px) scale(.9)}}
+/* list body clips the floaty overscroll */
+.chan-clip{flex:1;min-height:0;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.chan-scroll{position:relative}
+.ov-body{position:relative}
+.ov-head,.chat-head{position:relative;z-index:2;background:var(--list)}
+.chat-head{background:var(--chat)}
+.springback{transition:transform .55s var(--spring)!important}
+.pullcue{position:absolute;left:50%;z-index:47;height:32px;padding:0 13px 0 10px;border-radius:16px;background:var(--raise);border:1px solid var(--line);
+  color:var(--ink-2);font:600 13px/1 var(--font-ui);display:flex;align-items:center;gap:6px;pointer-events:none;white-space:nowrap;
+  box-shadow:0 8px 22px rgba(0,0,0,.28);opacity:0;transform:translate(-50%,0) scale(.85);transition:background .15s,color .15s}
+.pullcue .i{transition:transform .25s var(--spring)}
+.pullcue.ready{background:var(--brass);color:var(--brass-ink);border-color:transparent}
+.pullcue.ready .i{transform:scale(1.2)}
+.chat.vslide{transition:transform .42s var(--glide)}
+/* All apps: thin letter lines and a fast-scroll strip */
+.lsep{display:flex;align-items:center;gap:9px;padding:14px 4px 5px 12px;font:700 11px/1 var(--font-mono);letter-spacing:.06em;color:var(--ink-3);scroll-margin-top:4px}
+.lsep::after{content:"";flex:1;height:1px;background:var(--line)}
+.ov-body .lsep{padding:16px 16px 6px}
+.ov-body .lsep+.group{margin-top:2px}
+.has-az .chan-scroll{padding-right:26px}
+.has-az .ov-body .group,.has-az .ov-body .lsep{margin-right:30px}
+.overlay .az{top:66px}
+.cat-split{padding:0;gap:0}
+.cat-split button{display:flex;align-items:center;gap:4px;padding:16px 8px 6px;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit}
+.cat-split .cat-fold{padding-right:2px}
+.cat-split .cat-go{padding-left:2px;border-radius:8px;transition:color .15s}
+.cat-split .cat-go .i{width:12px;height:12px;opacity:.6;transform:none!important;transition:transform .2s var(--spring)}
+.cat-split .cat-go:active{color:var(--ink)}
+.cat-split .cat-go:active .i{transform:translateX(3px)!important}
+.cat-split.shut .cat-fold .i{transform:rotate(-90deg)}
+.findbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:8px;margin:8px 12px 4px;padding:0 12px;height:44px;border-radius:12px;
+  background:var(--field);color:var(--ink-3);box-shadow:0 6px 14px -8px rgba(0,0,0,.5)}
+.findbar input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;color:var(--ink);font:16px var(--font-ui)}
+.findbar input::placeholder{color:var(--ink-3)}
+.has-az .ov-body .findbar{margin-right:36px}
+.az{position:absolute;right:2px;top:6px;bottom:6px;width:24px;z-index:4;display:flex;flex-direction:column;justify-content:center;align-items:stretch;
+  touch-action:none;border-radius:12px;transition:background .15s}
+.az b{flex:1 1 0;max-height:19px;display:grid;place-items:center;font:700 10px/1 var(--font-mono);color:var(--ink-3);transition:color .12s,transform .18s var(--spring)}
+.az b.cur{color:var(--ink)}
+.az.active{background:color-mix(in srgb,var(--rail) 75%,transparent)}
+.az.active b.on{color:var(--brass);transform:scale(1.5) translateX(-4px)}
+.az-bubble{position:absolute;right:40px;z-index:5;width:58px;height:58px;border-radius:29px 29px 8px 29px;background:var(--brass);color:var(--brass-ink);
+  display:grid;place-items:center;font:700 27px/1 var(--font-ui);pointer-events:none;opacity:0;transform:scale(.5) rotate(-45deg);
+  transition:opacity .12s,transform .22s var(--spring)}
+.az-bubble span{transform:rotate(45deg)}
+.az-bubble.on{opacity:1;transform:scale(1) rotate(-45deg)}
+.app[data-rail="right"] .has-az .chan-scroll{padding-right:26px}
+/* little arrivals */
+.view.on{animation:viewIn .28s var(--glide)}
+@keyframes viewIn{from{opacity:0;transform:translateY(8px)}}
+.chan-scroll.stagger>*{animation:rowIn .42s var(--spring) both}
+@keyframes rowIn{from{opacity:0;transform:translateX(-14px)}}
+.tab .ti{transition:transform .2s}
+.tab.bump .ti{animation:tabPop .45s var(--spring)}
+@keyframes tabPop{40%{transform:scale(1.22) translateY(-2px)}}
+.count{animation:countIn .35s var(--spring)}
+@keyframes countIn{from{transform:scale(.4)}}
+.msg.enter,.sysmsg.enter{animation:msgIn .36s var(--spring) both}
+@keyframes msgIn{from{opacity:0;transform:translateY(12px) scale(.98)}}
+.msg.enter.typing .mc>:not(.who){animation:typed .55s linear both,msgIn .3s var(--spring) .55s both}
+@keyframes typed{0%,99.9%{max-height:0;opacity:0;overflow:hidden;margin:0;padding:0}100%{max-height:none}}
+.msg.enter.typing .mc::after{content:"";display:block;width:34px;height:14px;margin-top:4px;
+  background:radial-gradient(circle,var(--ink-3) 3px,transparent 3.5px) 0 50%/11px 14px repeat-x;animation:dots .55s linear both}
+@keyframes dots{0%{opacity:.4}30%{opacity:1}60%{opacity:.5}99.9%{height:14px;opacity:1}100%{height:0;opacity:0;margin:0}}
+.toast.on{animation:toastIn .35s var(--spring)}
+@keyframes toastIn{from{transform:translate(-50%,14px) scale(.9)}}
+/* sheets glide up with a little bounce and glide away */
+.sheet{transition:transform .26s var(--glide),visibility 0s linear .26s}
+.sheet.on{transition:transform .42s var(--spring),visibility 0s}
+.sheet.drag,.you.drag{transition:none!important}
+.scrim.top{z-index:45}
+.sheet{z-index:46}
+.overlay{z-index:44}
+.overlay:not([hidden]){animation:ovIn .32s var(--glide)}
+@keyframes ovIn{from{transform:translateX(24px);opacity:0}}
+/* You: a profile card that pops up from the bottom */
+.you{position:absolute;left:0;right:0;bottom:0;top:22px;z-index:42;background:var(--list);border-radius:22px 22px 0 0;overflow:hidden;
+  display:flex;flex-direction:column;transform:translate3d(0,104%,0);visibility:hidden;box-shadow:0 -12px 40px rgba(0,0,0,.4);
+  transition:transform .3s var(--glide),visibility 0s linear .3s}
+.you.on{transform:none;visibility:visible;transition:transform .5s var(--spring),visibility 0s}
+.you-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:104px;position:relative}
+.you .banner{height:148px;background-image:radial-gradient(circle at center,rgba(0,0,0,.2) 0 2.4px,transparent 3px),
+  linear-gradient(160deg,color-mix(in srgb,var(--bn) 100%,#fff 12%),color-mix(in srgb,var(--bn) 70%,#000));background-size:18px 18px,100% 100%}
+.you .banner .icon-btn{top:12px;width:36px;height:36px;border-radius:18px}
+.you .banner .yx{left:12px;right:auto}
+.you .banner .grab{position:absolute;top:0;left:0;right:0;height:22px}
+.you .banner .grab::before{background:rgba(255,255,255,.55)}
+.you .me-block{margin-top:-50px;gap:12px}
+.you .me-top{display:flex;align-items:flex-end;gap:10px}
+.you .me-block .av{width:96px;height:96px;font-size:36px;box-shadow:0 0 0 6px var(--list);animation:avIn .6s var(--spring) .08s both}
+@keyframes avIn{from{transform:scale(.6);opacity:0}}
+.bubble{position:relative;margin:0 0 30px 6px;max-width:min(230px,58%);background:var(--raise);border:1px solid var(--line);border-radius:16px;
+  padding:9px 12px;font-size:13.5px;line-height:1.35;color:var(--ink-2);text-align:left;animation:bubIn .55s var(--spring) .2s both;
+  display:flex;gap:6px;align-items:flex-start}
+.bubble::before,.bubble::after{content:"";position:absolute;background:var(--raise);border:1px solid var(--line);border-radius:50%}
+.bubble::before{width:11px;height:11px;left:-9px;bottom:2px}
+.bubble::after{width:6px;height:6px;left:-17px;bottom:-4px}
+.bubble.empty{color:var(--ink-3);font-style:italic}
+@keyframes bubIn{from{opacity:0;transform:translate(-10px,8px) scale(.8)}}
+.you .me-block h2{font-size:27px;letter-spacing:-.02em}
+.me-handle{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:14px;margin-top:3px}
+.me-handle .dndchip{font:600 11px/1 var(--font-ui);padding:4px 7px;border-radius:7px;background:color-mix(in srgb,var(--call) 18%,transparent);color:var(--call)}
+.me-btns .btn{height:42px;border-radius:12px}
+.me-btns .btn.pri{flex:1.4}
+.ytabs{position:sticky;top:0;z-index:3;display:grid;grid-template-columns:repeat(3,1fr);margin:10px 0 4px;background:var(--list);border-bottom:1px solid var(--line)}
+.ytabs button{height:44px;text-align:center;font-weight:600;font-size:14px;color:var(--ink-3);transition:color .2s}
+.ytabs button.on{color:var(--ink)}
+.ytabs i{position:absolute;bottom:-1px;left:0;height:2.5px;border-radius:2px;background:var(--ink);width:calc(100% / 3);transition:transform .38s var(--spring)}
+.ypane{animation:viewIn .3s var(--glide)}
+.you-dock{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:4;display:flex;gap:2px;padding:6px;
+  border-radius:22px;background:color-mix(in srgb,var(--raise) 88%,transparent);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.35);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.you.on .you-dock{animation:dockIn .55s var(--spring) .15s both}
+@keyframes dockIn{from{opacity:0;transform:translate(-50%,30px) scale(.9)}}
+.you-dock button{width:74px;height:50px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  font:600 11px/1 var(--font-ui);color:var(--ink-2);transition:background .15s,transform .2s var(--spring)}
+.you-dock button:active{background:var(--press);transform:scale(.92)}
+.you-dock .i{color:var(--ink)}
+.app.wide .you{left:50%;right:auto;width:min(540px,100%);top:40px;transform:translate3d(-50%,104%,0)}
+.app.wide .you.on{transform:translate3d(-50%,0,0)}
+/* passport connections */
+.pp-sub{font:700 10.5px/1 var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding-top:4px}
+.links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.lk{display:flex;align-items:center;gap:10px;min-width:0;padding:9px 10px;border-radius:13px;background:var(--field);text-align:left}
+.lk .lki{width:32px;height:32px;border-radius:10px;flex:none;display:grid;place-items:center;background:var(--list);color:var(--ink)}
+.lk .lki .i{width:18px;height:18px}
+.lk .lkt{min-width:0;flex:1}
+.lk b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lk small{display:block;font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.you .passport .lk:nth-child(n){animation:rowIn .45s var(--spring) both}
+.qrpick{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 12px 12px}
+.qrpick::-webkit-scrollbar{display:none}
+.qrpick button{flex:none;height:34px;padding:0 12px;border-radius:17px;background:var(--field);color:var(--ink-2);font:600 13px/1 var(--font-ui);display:flex;align-items:center;gap:6px}
+.qrpick button .i{width:15px;height:15px}
+.qrpick button.on{background:var(--brass);color:var(--brass-ink)}
+.qr-big{transition:transform .35s var(--spring)}
+.qr-big.flip{animation:qrFlip .45s var(--spring)}
+@keyframes qrFlip{0%{transform:scale(.85) rotateY(70deg);opacity:.2}}
+.qr-cap{text-align:center;color:var(--ink-2);font-size:13.5px;margin:-6px 16px 12px;overflow-wrap:anywhere}
+/* passport editor */
+.lrow{display:grid;grid-template-columns:36px minmax(0,1fr) 40px;gap:8px;align-items:center;padding:0 12px;margin-bottom:8px;animation:rowIn .35s var(--spring) both}
+.lrow .lki{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--raise);border:1px solid var(--line)}
+.lrow .inp{width:100%;margin:0}
+.lrow label{display:block;font:600 11px/1 var(--font-ui);color:var(--ink-3);margin:0 0 4px 2px}
+.addlinks{display:flex;flex-wrap:wrap;gap:6px;padding:4px 12px}
+.addlinks button{height:34px;padding:0 11px 0 9px;border-radius:17px;background:var(--raise);border:1px solid var(--line);font:600 13px/1 var(--font-ui);color:var(--ink-2);display:flex;align-items:center;gap:6px}
+.addlinks button .i{width:15px;height:15px}
+.addlinks button:active{transform:scale(.94)}
+@media (prefers-reduced-motion: reduce){
+  .app *,.app *::before,.app *::after{animation-duration:.01s!important;animation-delay:0s!important;transition-duration:.01s!important}
+}
+
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-panel" viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.9"/><circle cx="12" cy="6" r="1.9"/><circle cx="18" cy="6" r="1.9"/><circle cx="6" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="18" cy="12" r="1.9"/><circle cx="6" cy="18" r="1.9"/><circle cx="12" cy="18" r="1.9"/><circle cx="18" cy="18" r="1.9"/><path d="M12 12c2 3 4 4 6 6"/></symbol>
@@ -636,6 +831,20 @@ img{max-width:100%}
   <symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01" stroke-width="2.6"/></symbol>
   <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/></symbol>
   <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2"/><path d="M4 7l8 6 8-6"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.8"/><path d="M17 7h.01" stroke-width="2.6"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M7 17.5l-3.5 3V7a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3v7.5a3 3 0 0 1-3 3z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01" stroke-width="2.4"/></symbol>
+  <symbol id="i-cash" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5.5l11-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+  <symbol id="i-at" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.6"/><path d="M15.6 12v1.4a2.6 2.6 0 0 0 5.2 0V12a8.8 8.8 0 1 0-3.6 7.1"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M8 4v16M16 4v16M3.5 9H8M3.5 15H8M16 9h4.5M16 15h4.5"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M8.5 7l-5 5 5 5M15.5 7l5 5-5 5M13.5 4.5l-3 15"/></symbol>
+  <symbol id="i-brief" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M3 12.5h18"/></symbol>
+  <symbol id="i-game" viewBox="0 0 24 24"><path d="M7 7h10a4.5 4.5 0 0 1 4.4 5.4l-.8 4a2.6 2.6 0 0 1-4.5 1.2L14.5 16h-5l-1.6 1.6a2.6 2.6 0 0 1-4.5-1.2l-.8-4A4.5 4.5 0 0 1 7 7z"/><path d="M8 10v3.5M6.25 11.75h3.5M15.5 11h.01M17.5 13h.01" stroke-width="2"/></symbol>
+  <symbol id="i-run" viewBox="0 0 24 24"><circle cx="14.5" cy="4.5" r="1.8"/><path d="M5 20l3.5-5 3 2 1.5-5.5 3 3H20M8.5 11l2.5-3.5h4l-2 6.5"/></symbol>
+  <symbol id="i-plane" viewBox="0 0 24 24"><path d="M21 3.5L2.5 11l7 2.5 2.5 7z"/><path d="M9.5 13.5L21 3.5"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.4"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1.4"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1.4"/><path d="M14 14h2.5v2.5H14zM18 18h2.5v2.5H18zM14 18.5v2M18.5 14h2" stroke-width="1.6"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="17.5" cy="5.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/><path d="M8.7 10.8l6.6-4M8.7 13.2l6.6 4"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
 </svg>
 
@@ -647,7 +856,6 @@ img{max-width:100%}
     </section>
     <section class="view page" id="v-inbox" data-view="inbox" aria-label="Messages"></section>
     <section class="view page" id="v-activity" data-view="activity" aria-label="Activity"></section>
-    <section class="view page" id="v-you" data-view="you" aria-label="You"></section>
   </main>
   <div class="nowbar" id="nowbar" hidden></div>
   <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -670,6 +878,11 @@ img{max-width:100%}
 
   <section class="overlay" id="overlay" hidden></section>
   <div class="scrim" id="scrim" data-act="close-sheet"></div>
+  <section class="you" id="you" role="dialog" aria-modal="true" aria-label="You">
+    <div class="you-body" id="youBody"></div>
+    <nav class="you-dock" id="youDock" aria-label="Shortcuts"></nav>
+  </section>
+  <div class="pullcue" id="pullcue" aria-hidden="true"></div>
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Options">
     <button class="grab" data-act="close-sheet" aria-label="Close"></button>
     <div class="sheet-body" id="sheetBody"></div>
@@ -783,8 +996,9 @@ window.SBMock = window.SBNative ? null : (() => {
     call: num => say('Preview: calls ' + num),
     sms: (num, body) => say('Preview: new text to ' + num),
     openContact: id => say('Preview: opens contact'),
-    profile: () => ({ name: 'Jeremias', phone: '+1 555 010 0199', email: 'jeremias@example.com',
-      links: [{ label: 'Substack', url: 'https://example.substack.com' }, { label: 'Website', url: 'https://example.com' }] }),
+    profile: () => ({ name: 'Jeremias', phone: '+1 555 010 0199', email: 'jeremias@example.com', note: 'Reston, VA · builds things', status: 'probably on my third mate',
+      links: [{ type: 'web', v: 'jere.ing' }, { type: 'instagram', v: 'example' }, { type: 'discord', v: 'jere.mi.as' },
+        { type: 'venmo', v: 'example' }, { type: 'substack', v: 'example' }, { type: 'letterboxd', v: 'example' }] }),
     remind: (id, at, text) => true,
     cancelRemind: id => true,
     battery: () => ({ pct: 78, charging: false }),
@@ -803,7 +1017,7 @@ window.SBMock = window.SBNative ? null : (() => {
     copy: t => { try { navigator.clipboard.writeText(t); } catch (e) {} return true; },
     haptic: () => {},
     setHome: () => say('Preview: opens the default home app picker'),
-    version: () => '0.3-preview'
+    version: () => '0.4-preview'
   };
 })();
 
@@ -970,7 +1184,10 @@ if (typeof module !== 'undefined') module.exports = SBQR;
 
 </script>
 <script>
-/* Switchboard v0.2: an Android home screen laid out as a chat app.
+/* Switchboard v0.4: an Android home screen laid out as a chat app.
+   v0.4: pull past the top of any list for #feed (the shade moved to the rail), pull past the newest message to go back,
+   A–Z lines and fast scroll, hold-and-drag spaces, search in the app picker, auto-named spaces, typed passport links
+   with a code per link, You as a pop-up profile card, press highlights and motion throughout.
    Home: the bar into #feed, the next three events, pinned apps. Spaces on the rail hold apps as channels.
    #feed is where you talk to the phone (commands, Operator). Messages is people. Activity is everything else.
 
@@ -1189,12 +1406,58 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     if (!Array.isArray(D.pinned)) D.pinned = [];
   }
   function initPassport() {
-    if (D.passport) return;
-    const p = B.profile() || {};
-    D.passport = { name: p.name || D.name || 'You', phone: p.phone || '', email: p.email || '', note: p.note || '', links: arr(p.links).slice(0, 5) };
-    delete D.name;
+    if (!D.passport) {
+      const p = B.profile() || {};
+      D.passport = { name: p.name || D.name || 'You', phone: p.phone || '', email: p.email || '', note: p.note || '', status: p.status || '', links: arr(p.links) };
+      delete D.name;
+    }
+    // v0.4: links carry a type (Instagram, Venmo…) and a handle or address; older {label, url} links are converted.
+    D.passport.links = arr(D.passport.links).map(normLink).filter(Boolean).slice(0, MAX_LINKS);
+    if (D.passport.status == null) D.passport.status = '';
     save();
   }
+
+  /* ---------- passport links ---------- */
+  const MAX_LINKS = 12;
+  const isUrl = v => /^[a-z][a-z0-9+.-]*:/i.test(v) || /[./]/.test(v);
+  const toUrl = v => (/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : 'https://' + v);
+  const bare = v => String(v || '').trim().replace(/^[@$]+/, '');
+  const handleOr = (build, show = h => '@' + h) => ({ url: v => (isUrl(v) && /\//.test(v) ? toUrl(v) : build(bare(v))), show: v => (isUrl(v) && /\//.test(v) ? hostOf(toUrl(v)) : show(bare(v))) });
+  const LINKS = {
+    web: { n: 'Website', i: 'globe', ph: 'yoursite.com', url: toUrl, show: v => hostOf(toUrl(v)) },
+    instagram: Object.assign({ n: 'Instagram', i: 'cam', ph: '@handle', host: /instagram\.com/ }, handleOr(h => 'https://instagram.com/' + h)),
+    discord: { n: 'Discord', i: 'chat', ph: 'username', host: /discord\.(com|gg)/, url: v => (/\//.test(v) ? toUrl(v) : ''), show: v => bare(v), copy: true },
+    venmo: Object.assign({ n: 'Venmo', i: 'cash', ph: '@handle', host: /venmo\.com/ }, handleOr(h => 'https://venmo.com/u/' + h)),
+    cashapp: Object.assign({ n: 'Cash App', i: 'cash', ph: '$cashtag', host: /cash\.app/ }, handleOr(h => 'https://cash.app/$' + h, h => '$' + h)),
+    paypal: Object.assign({ n: 'PayPal', i: 'cash', ph: 'paypal.me name', host: /paypal\.(me|com)/ }, handleOr(h => 'https://paypal.me/' + h, h => h)),
+    spotify: Object.assign({ n: 'Spotify', i: 'music', ph: 'profile or playlist link', host: /spotify\.com/ }, handleOr(h => 'https://open.spotify.com/user/' + h, h => h)),
+    soundcloud: Object.assign({ n: 'SoundCloud', i: 'music', ph: 'username', host: /soundcloud\.com/ }, handleOr(h => 'https://soundcloud.com/' + h, h => h)),
+    substack: { n: 'Substack', i: 'pen', ph: 'name or link', host: /substack\.com/, url: v => (isUrl(v) ? toUrl(v) : 'https://' + bare(v) + '.substack.com'), show: v => (isUrl(v) ? hostOf(toUrl(v)) : bare(v) + '.substack.com') },
+    letterboxd: Object.assign({ n: 'Letterboxd', i: 'film', ph: 'username', host: /letterboxd\.com|boxd\.it/ }, handleOr(h => 'https://letterboxd.com/' + h + '/', h => h)),
+    x: Object.assign({ n: 'X', i: 'at', ph: '@handle', host: /(^|\.)(x|twitter)\.com/ }, handleOr(h => 'https://x.com/' + h)),
+    bluesky: Object.assign({ n: 'Bluesky', i: 'at', ph: 'handle.bsky.social', host: /bsky\.app/ }, { url: v => (/\//.test(v) ? toUrl(v) : 'https://bsky.app/profile/' + bare(v)), show: v => (/\//.test(v) ? hostOf(toUrl(v)) : '@' + bare(v)) }),
+    tiktok: Object.assign({ n: 'TikTok', i: 'play', ph: '@handle', host: /tiktok\.com/ }, handleOr(h => 'https://www.tiktok.com/@' + h)),
+    youtube: Object.assign({ n: 'YouTube', i: 'play', ph: '@handle', host: /youtube\.com|youtu\.be/ }, handleOr(h => 'https://youtube.com/@' + h)),
+    github: Object.assign({ n: 'GitHub', i: 'code', ph: 'username', host: /github\.com/ }, handleOr(h => 'https://github.com/' + h, h => h)),
+    linkedin: Object.assign({ n: 'LinkedIn', i: 'brief', ph: 'handle or link', host: /linkedin\.com/ }, handleOr(h => 'https://www.linkedin.com/in/' + h, h => h)),
+    steam: Object.assign({ n: 'Steam', i: 'game', ph: 'profile name or link', host: /steamcommunity\.com/ }, handleOr(h => 'https://steamcommunity.com/id/' + h, h => h)),
+    strava: Object.assign({ n: 'Strava', i: 'run', ph: 'profile link', host: /strava\.com/ }, handleOr(h => 'https://www.strava.com/athletes/' + h, h => h)),
+    telegram: Object.assign({ n: 'Telegram', i: 'plane', ph: '@username', host: /t\.me|telegram\.me/ }, handleOr(h => 'https://t.me/' + h)),
+    whatsapp: { n: 'WhatsApp', i: 'chat', ph: 'number with country code', host: /wa\.me|whatsapp\.com/, url: v => (/\//.test(v) ? toUrl(v) : 'https://wa.me/' + String(v).replace(/\D/g, '')), show: v => v },
+    other: { n: 'Link', i: 'link', ph: 'https://', url: toUrl, show: v => hostOf(toUrl(v)) }
+  };
+  const LINK_ORDER = ['web', 'instagram', 'discord', 'venmo', 'cashapp', 'spotify', 'substack', 'letterboxd', 'x', 'bluesky', 'tiktok', 'youtube', 'github', 'linkedin', 'steam', 'soundcloud', 'strava', 'telegram', 'whatsapp', 'paypal', 'other'];
+  function normLink(l) {
+    if (!l) return null;
+    if (l.type && LINKS[l.type]) return { type: l.type, v: String(l.v || '').trim().slice(0, 200), label: l.label || '' };
+    const u = String(l.url || l.v || '').trim(); if (!u) return null;
+    const h = hostOf(toUrl(u)), type = Object.keys(LINKS).find(k => LINKS[k].host && LINKS[k].host.test(h)) || (/\//.test(u.replace(/^https?:\/\//, '')) ? 'other' : 'web');
+    return { type, v: u.slice(0, 200), label: l.label || '' };
+  }
+  const linkDef = l => LINKS[l.type] || LINKS.other;
+  const linkUrl = l => { try { return l.v ? linkDef(l).url(l.v) : ''; } catch (e) { return ''; } };
+  const linkShow = l => { try { return linkDef(l).show(l.v); } catch (e) { return l.v; } };
+  const linkName = l => l.label || linkDef(l).n;
 
   /* ---------- model ---------- */
   const appOf = k => S.byKey.get(k);
@@ -1315,12 +1578,12 @@ if (typeof module !== 'undefined') module.exports = SBQR;
 
   /* ---------- rail + channel list ---------- */
   function renderRail() {
+    if (S.drag) return;   // a space is being dragged; redraw when it lands
     const el = $('#rail'), top = el.scrollTop, bottom = D.homePos === 'bottom';
     const home = `<button class="tile home ${S.space === 'home' ? 'on' : ''}" data-act="space" data-id="home" data-long="space" aria-label="Home">${ic('panel')}</button>`;
     const tiles = arr(D.spaces).map(sp => {
       const apps = spaceApps(sp);
-      const inner = sp.glyph ? `<span class="glyph">${esc(sp.glyph)}</span>`
-        : apps.length ? `<span class="mosaic">${apps.slice(0, 4).map(a => `<img src="${esc(a.icon)}" alt="">`).join('')}</span>`
+      const inner = apps.length ? `<span class="mosaic">${apps.slice(0, 4).map(a => `<img src="${esc(a.icon)}" alt="">`).join('')}</span>`
           : `<span class="glyph">${esc(initials(sp.name))}</span>`;
       return `<button class="tile ${S.space === sp.id ? 'on' : ''}" data-act="space" data-id="${esc(sp.id)}" data-long="space" aria-label="${esc(sp.name)}">${inner}${spaceLit(spacePkgs(sp.id)) ? '<span class="lamp"></span>' : ''}</button>`;
     }).join('');
@@ -1335,10 +1598,11 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     const vis = shut ? rows.filter(r => r.hot) : rows;
     return `<button class="cat ${shut ? 'shut' : ''}" data-act="cat" data-id="${esc(id)}" aria-expanded="${!shut}">${ic('chev')}${esc(title)}${n != null ? `<span class="n">${n}</span>` : ''}</button>` + vis.map(r => r.h).join('');
   }
+  const isPicked = k => S.picked && S.picked.key === k && now() < S.picked.until;
   function appRow(a) {
     const b = pkgBadge(a.pkg);
     return {
-      h: `<button class="chan ${b.m || b.u ? 'unread' : ''}" data-act="launch" data-key="${esc(a.key)}" data-long="app"><img class="ai" src="${esc(a.icon)}" alt="" loading="lazy"><span class="cl">${esc(a.label)}</span>${badgeInline(b)}</button>`,
+      h: `<button class="chan ${b.m || b.u ? 'unread' : ''}${isPicked(a.key) ? ' picked' : ''}" data-act="launch" data-key="${esc(a.key)}" data-long="app"><img class="ai" src="${esc(a.icon)}" alt="" loading="lazy"><span class="cl">${esc(a.label)}</span>${badgeInline(b)}</button>`,
       hot: !!(b.m || b.u)
     };
   }
@@ -1361,10 +1625,14 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     const soon = !e.allDay && e.start - now() < HOUR;
     return { h: `<button class="chan ev-chan ${soon ? 'unread' : ''}" data-act="event" data-id="${esc(e.id)}"><span class="evdot"><i style="background:${safeColor(e.color)}"></i></span><span class="cl">${esc(e.title)}</span><span class="evw">${esc(evWhen(e))}</span></button>`, hot: false };
   }
+  // "Up next" opens the calendar app; the arrow beside it folds the section.
+  const calApp = () => visApps().find(a => /calendar/i.test(a.pkg)) || S.apps.find(a => /calendar/i.test(a.pkg)) || visApps().find(a => /calendar/i.test(a.label));
   function upNext() {
-    if (!S.perms.calendar) return cat('home:next', 'Up next', [{ h: `<button class="chan" data-act="perm" data-v="calendar">${ic('calendar')}<span class="cl">Allow calendar access</span></button>`, hot: true }]);
-    const evs = upcoming(7).slice(0, 3);
-    return cat('home:next', 'Up next', evs.length ? evs.map(evChan) : [{ h: '<div class="empty-note">Nothing on the calendar this week.</div>', hot: false }]);
+    const rows = !S.perms.calendar ? [{ h: `<button class="chan" data-act="perm" data-v="calendar">${ic('calendar')}<span class="cl">Allow calendar access</span></button>`, hot: true }]
+      : (() => { const evs = upcoming(7).slice(0, 3); return evs.length ? evs.map(evChan) : [{ h: '<div class="empty-note">Nothing on the calendar this week.</div>', hot: false }]; })();
+    const shut = !!D.collapsed['home:next'];
+    return `<div class="cat cat-split ${shut ? 'shut' : ''}"><button class="cat-fold" data-act="cat" data-id="home:next" aria-expanded="${!shut}" aria-label="${shut ? 'Show' : 'Hide'} up next">${ic('chev')}</button>` +
+      `<button class="cat-go" data-act="open-cal">Up next${ic('chev-r', 'xs')}</button></div>` + (shut ? rows.filter(r => r.hot) : rows).map(r => r.h).join('');
   }
   function homeTitle() {
     const f = D.fun;
@@ -1377,10 +1645,21 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       `<button class="doorway" data-act="doorway" aria-label="Open #feed">${ic('hash', 'sm')}<span class="dl">Message #feed</span>${lit ? '<span class="dotlamp" title="New from Operator"></span>' : ''}<span class="dk">/</span></button>`;
   }
   const pullHint = () => `<button class="pullhint" data-act="space" data-id="all">${ic('up', 'xs')}Pull up for all apps</button>`;
+  const letterOf = s => { const c = norm(s)[0] || ''; return /[a-z]/.test(c) ? c.toUpperCase() : '#'; };
+  // Rows split into letter sections with a thin line and the letter; the fast-scroll strip jumps between them.
+  function lettered(apps, rowFn, wrap = h => h) {
+    const groups = new Map();
+    for (const a of apps) { const L = letterOf(a.label); if (!groups.has(L)) groups.set(L, []); groups.get(L).push(a); }
+    const keys = [...groups.keys()].sort((x, y) => (x === '#') - (y === '#') || x.localeCompare(y));
+    return keys.map(L => `<div class="lsep" data-l="${esc(L)}">${esc(L)}</div>` + wrap(groups.get(L).map(rowFn).join(''))).join('');
+  }
+  const motionOK = () => D.fun.motion !== 'still' && !matchMedia('(prefers-reduced-motion: reduce)').matches;
   function renderList() {
+    if (S.azBusy) return;   // finger is on the letter strip
     const el = $('#chanlist');
     const old = el.querySelector('.chan-scroll');
-    const top = old && S.listSpace === S.space ? old.scrollTop : 0;
+    const changed = S.listSpace !== S.space;
+    const top = old && !changed ? old.scrollTop : 0;
     S.listSpace = S.space;
     let head = '', body = '';
     if (S.space === 'home') {
@@ -1399,9 +1678,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     } else if (S.space === 'all') {
       const apps = visApps();
       head = spaceHead('All apps', apps.length + ' apps');
-      const groups = new Map();
-      for (const a of apps) { const L = /[a-z]/i.test(a.label[0]) ? a.label[0].toUpperCase() : '#'; if (!groups.has(L)) groups.set(L, []); groups.get(L).push(a); }
-      for (const [L, list] of groups) body += cat('all:' + L, L, list.map(appRow), list.length);
+      body += lettered(apps, a => appRow(a).h);
       if (D.hidden.length) body += `<button class="chan add" data-act="ov" data-v="hidden"><span class="hash">${ic('eye-off', 'sm')}</span><span class="cl">Hidden apps</span><span class="muted">${D.hidden.length}</span></button>`;
     } else {
       const sp = spaceOf(S.space);
@@ -1413,8 +1690,63 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       body += `<button class="chan add" data-act="ov" data-v="edit-space" data-id="${esc(sp.id)}"><span class="hash">${ic('plus', 'sm')}</span><span class="cl">Add or remove apps</span></button>`;
       body += pullHint();
     }
-    el.innerHTML = head + `<div class="chan-scroll">${body}</div>`;
-    el.querySelector('.chan-scroll').scrollTop = top;
+    el.innerHTML = head + `<div class="chan-clip"><div class="chan-scroll">${body}</div></div>`;
+    el.classList.remove('has-az');
+    const sc = el.querySelector('.chan-scroll');
+    sc.scrollTop = top;
+    if (S.space === 'all') mountAZ(el.querySelector('.chan-clip'), sc, el);
+    if (changed && motionOK() && S.tab === 'home') {
+      sc.classList.add('stagger');
+      [...sc.children].forEach((c, i) => { c.style.animationDelay = Math.min(i, 18) * 16 + 'ms'; });
+      setTimeout(() => sc.classList.remove('stagger'), 900);
+    }
+  }
+
+  /* ---------- A–Z fast scroll ---------- */
+  function mountAZ(host, sc, mark = host) {
+    const seps = [...sc.querySelectorAll('.lsep')];
+    if (seps.length < 5) return;
+    mark.classList.add('has-az');
+    const az = document.createElement('div'), bub = document.createElement('div');
+    az.className = 'az'; az.setAttribute('aria-hidden', 'true');
+    az.innerHTML = seps.map(s => `<b>${esc(s.dataset.l)}</b>`).join('');
+    bub.className = 'az-bubble'; bub.innerHTML = '<span></span>';
+    host.append(az, bub);
+    const bs = [...az.children];
+    let cur = -1;
+    const mark1 = (cls, i) => bs.forEach((b, j) => b.classList.toggle(cls, j === i));
+    const onScroll = () => {
+      if (az.classList.contains('active')) return;
+      const y = sc.scrollTop + 12; let i = 0;
+      for (let j = 0; j < seps.length; j++) if (seps[j].offsetTop <= y) i = j;
+      mark1('cur', i);
+    };
+    sc.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    const at = y => {
+      const r = az.getBoundingClientRect(), hr = host.getBoundingClientRect();
+      let i = bs.findIndex(b => { const q = b.getBoundingClientRect(); return y < q.bottom; });
+      if (i < 0) i = bs.length - 1;
+      if (y < r.top) i = 0;
+      if (i !== cur) {
+        cur = i;
+        sc.scrollTop = Math.max(0, seps[i].offsetTop - 2);
+        mark1('on', i); mark1('cur', i);
+        bub.firstChild.textContent = seps[i].dataset.l;
+        if (B.haptic) B.haptic('tick');
+      }
+      bub.style.top = Math.max(0, Math.min(hr.height - 58, y - hr.top - 50)) + 'px';
+    };
+    az.addEventListener('pointerdown', e => {
+      e.preventDefault(); e.stopPropagation();
+      try { az.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+      S.azBusy = true; cur = -1; az.classList.add('active'); bub.classList.add('on'); at(e.clientY);
+    });
+    az.addEventListener('pointermove', e => { if (S.azBusy && az.classList.contains('active')) at(e.clientY); });
+    const done = () => { if (!az.classList.contains('active')) return; S.azBusy = false; az.classList.remove('active'); bub.classList.remove('on'); mark1('on', -1); };
+    az.addEventListener('pointerup', done);
+    az.addEventListener('pointercancel', done);
+    az.addEventListener('lostpointercapture', done);
   }
 
   /* ---------- tabs + now playing ---------- */
@@ -1426,7 +1758,9 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       ['activity', `${ic('bell')}${actN ? `<span class="count">${actN > 99 ? '99+' : actN}</span>` : ''}`, 'Activity'],
       ['you', meAv('me-av'), 'You']
     ];
-    $('#tabs').innerHTML = t.map(([k, i, l]) => `<button class="tab ${S.tab === k ? 'on' : ''}" data-act="tab" data-t="${k}" aria-current="${S.tab === k ? 'page' : 'false'}"><span class="ti">${i}</span>${l}</button>`).join('');
+    const cur = S.you ? 'you' : S.tab, bump = cur !== S.tabShown && S.tabShown != null && motionOK();
+    S.tabShown = cur;
+    $('#tabs').innerHTML = t.map(([k, i, l]) => `<button class="tab ${cur === k ? 'on' : ''}${bump && cur === k ? ' bump' : ''}" data-act="tab" data-t="${k}" aria-current="${cur === k ? 'page' : 'false'}"><span class="ti">${i}</span>${l}</button>`).join('');
   }
   function renderNow() {
     const el = $('#nowbar'), m = S.media;
@@ -1505,59 +1839,104 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       'N:' + e(parts.length > 1 ? parts[parts.length - 1] : '') + ';' + e(parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0] || '') + ';;;'];
     if (p.phone) L.push('TEL;TYPE=CELL:' + String(p.phone).replace(/[^\d+]/g, ''));
     if (p.email) L.push('EMAIL:' + p.email);
-    for (const l of arr(p.links)) if (l.url) L.push('URL:' + l.url);
-    if (p.note) L.push('NOTE:' + e(p.note));
+    const notes = [];
+    for (const l of arr(p.links)) {
+      const u = linkUrl(l);
+      if (u) L.push('URL:' + u); else if (l.v) notes.push(linkName(l) + ': ' + linkShow(l));
+    }
+    if (p.note) notes.unshift(p.note);
+    if (notes.length) L.push('NOTE:' + e(notes.join('\n')));
     L.push('END:VCARD');
     return L.join('\r\n');
   }
-  const qrSvg = () => (window.SBQR ? SBQR.svg(vcard(D.passport)) : '');
-  const hostOf = u => { try { return new URL(u).host.replace(/^www\./, ''); } catch (e) { return u; } };
+  const qrSvg = (text) => (window.SBQR ? SBQR.svg(text != null ? text : vcard(D.passport)) : '');
+  const hostOf = u => { try { const x = new URL(u); return (x.host + (x.pathname.length > 1 ? x.pathname.replace(/\/$/, '') : '')).replace(/^www\./, ''); } catch (e) { return u; } };
+  function linkCard(l, i) {
+    const d = linkDef(l);
+    return `<button class="lk" data-act="pp-link" data-i="${i}" style="animation-delay:${i * 35}ms"><span class="lki">${ic(d.i)}</span><span class="lkt"><b>${esc(linkShow(l))}</b><small>${esc(linkName(l))}${d.copy && !linkUrl(l) ? ' · tap to copy' : ''}</small></span></button>`;
+  }
   function passportHtml() {
     const p = D.passport, q = qrSvg();
     const rows = [];
     if (p.phone) rows.push(`<button class="pp-row" data-act="pp-copy" data-v="${esc(p.phone)}">${ic('phone', 'sm')}<span>${esc(p.phone)}<small>Phone · tap to copy</small></span></button>`);
     if (p.email) rows.push(`<button class="pp-row" data-act="pp-copy" data-v="${esc(p.email)}">${ic('mail', 'sm')}<span>${esc(p.email)}<small>Email · tap to copy</small></span></button>`);
-    for (const l of arr(p.links)) rows.push(`<button class="pp-row" data-act="link-out" data-v="${esc(l.url)}">${ic('link', 'sm')}<span>${esc(l.label || hostOf(l.url))}<small>${esc(hostOf(l.url))}</small></span></button>`);
-    if (!rows.length) rows.push(`<button class="pp-row" data-act="ov" data-v="passport">${ic('plus', 'sm')}<span>Add your number, email and links<small>They go on the card and the code</small></span></button>`);
+    const links = arr(p.links).filter(l => l.v);
+    if (!rows.length && !links.length) rows.push(`<button class="pp-row" data-act="ov" data-v="passport">${ic('plus', 'sm')}<span>Add your number, email and links<small>They go on the card and the code</small></span></button>`);
     return `<section class="passport" aria-label="Passport"><div class="pp-head"><span class="pp-k">Passport</span>${chip()}<button class="icon-btn" data-act="ov" data-v="passport" aria-label="Edit passport">${ic('edit', 'sm')}</button></div>` +
       `<div class="pp-body"><div class="pp-rows">${rows.join('')}</div>${q ? `<button class="pp-qr" data-act="qr-big" aria-label="Show contact code larger">${q}</button>` : ''}</div>` +
-      (q ? `<div class="pp-foot">Anyone can scan the code to save you as a contact.</div>` : '') + '</section>';
+      (links.length ? `<div class="pp-sub">Connections</div><div class="links">${links.map(linkCard).join('')}</div>` : `<button class="pp-row" data-act="ov" data-v="passport">${ic('plus', 'sm')}<span>Add Instagram, Discord, Venmo…<small>Up to ${MAX_LINKS} links</small></span></button>`) +
+      (q ? `<div class="pp-foot">Anyone can scan the code to save you as a contact. Tap it for a code per link.</div>` : '') + '</section>';
   }
+  const YTABS = [['passport', 'Passport'], ['phone', 'Phone'], ['launcher', 'Launcher']];
   function renderYou() {
     const b = S.battery || {}, dv = S.device || {}, p = S.perms || {}, pp = D.passport;
     const liveN = S.notifs.filter(n => n.live).length, liveApps = new Set(S.notifs.filter(n => n.live).map(n => n.pkg)).size;
     const granted = ['notif', 'calendar', 'contacts', 'dnd', 'phone', 'alarms'].filter(k => p[k]).length;
     const used = dv.total ? dv.total - dv.free : 0;
-    let h = `<div class="banner" style="--bn:${BANNERS[D.banner % BANNERS.length]}"><button class="icon-btn" data-act="ov" data-v="appearance" aria-label="Appearance">${ic('sliders')}</button></div>`;
-    h += `<div class="me-block">${meAv()}<div><h2>${esc(pp.name)}</h2>${pp.note ? `<div class="note">${esc(pp.note)}</div>` : ''}</div></div>`;
-    h += passportHtml();
-    h += `<div class="group">` + row('data-act="dnd"', ic('moon'), 'Do Not Disturb', D.dnd ? 'Calls and notifications are silenced' : 'Silences calls and notifications on the phone', `<span class="switch ${D.dnd ? 'on' : ''}" role="switch" aria-checked="${D.dnd}"></span>`) + '</div>';
-    h += `<div class="label">Phone</div><div class="stats">` +
-      `<div class="stat"><small>Battery</small><b>${b.pct != null ? b.pct + '%' : '–'}</b><div class="meter ${b.pct < 20 ? 'low' : ''}"><i style="width:${b.pct || 0}%"></i></div><span>${b.charging ? 'Charging' : 'On battery'}</span></div>` +
-      `<div class="stat"><small>Storage</small><b>${gb(used)}</b><div class="meter"><i style="width:${dv.total ? Math.round(used / dv.total * 100) : 0}%"></i></div><span>of ${gb(dv.total)}</span></div>` +
-      `<div class="stat"><small>In the shade</small><b>${liveN}</b><span>from ${plural(liveApps, 'app')}</span></div>` +
-      `<div class="stat"><small>Device</small><b>${esc(dv.model || 'Android')}</b><span>Android ${esc(dv.android || '')}</span></div></div>`;
-    h += `<div class="label">Launcher</div><div class="group">` +
-      row('data-act="ov" data-v="fun"', ic('dice'), 'Fun stuff', 'Colors, wallpapers, fonts, icon shapes, toys', ic('chev-r', 'sm'), 'fun-row') +
-      row('data-act="ov" data-v="appearance"', ic('contrast'), 'Appearance', 'Theme, density, rail, banner', `<span class="rv">${esc(D.skin === 'auto' ? 'Auto' : D.skin[0].toUpperCase() + D.skin.slice(1))}</span>`) +
-      row('data-act="ov" data-v="spaces"', ic('layers'), 'Spaces', 'Order, names, which apps go where', `<span class="rv">${arr(D.spaces).length}</span>`) +
-      row('data-act="ov" data-v="hidden"', ic('eye-off'), 'Hidden apps', '', `<span class="rv">${D.hidden.length}</span>`) +
-      row('data-act="ov" data-v="perms"', ic('shield'), 'Permissions', 'Notifications, calendar, contacts, Do Not Disturb', `<span class="rv">${granted} of 6</span>`) +
-      (p.isHome ? '' : row('data-act="set-home"', ic('home'), 'Make Switchboard your home screen', 'Choose it in the home app picker', ic('chev-r', 'sm'))) +
-      `</div><div class="foot">${ic('jack', 'xs')}Switchboard <code>${esc(B.version() || '')}</code></div>`;
-    $('#v-you').innerHTML = h;
+    const body = $('#youBody'), top = body.scrollTop, tab = S.youTab || 'passport', ti = YTABS.findIndex(t => t[0] === tab);
+    let h = `<div class="banner" style="--bn:${BANNERS[D.banner % BANNERS.length]}"><span class="grab" aria-hidden="true"></span>` +
+      `<button class="icon-btn yx" data-act="you-close" aria-label="Close">${ic('x', 'sm')}</button>` +
+      `<button class="icon-btn" data-act="ov" data-v="appearance" aria-label="Appearance">${ic('sliders', 'sm')}</button></div>`;
+    h += `<div class="me-block"><div class="me-top">${meAv()}<button class="bubble ${pp.status ? '' : 'empty'}" data-act="ov" data-v="passport" data-id="status">${pp.status ? esc(pp.status) : '+ Add a status'}</button></div>` +
+      `<div><h2>${esc(pp.name)}</h2><div class="me-handle">${pp.note ? `<span>${esc(pp.note)}</span>` : ''}${D.dnd ? '<span class="dndchip">Do Not Disturb</span>' : ''}</div></div>` +
+      `<div class="me-btns"><button class="btn pri" data-act="ov" data-v="passport">${ic('edit')}Edit passport</button><button class="btn" data-act="qr-big">${ic('qr')}Share</button></div></div>`;
+    h += `<nav class="ytabs" role="tablist">${YTABS.map(([k, l]) => `<button class="${k === tab ? 'on' : ''}" role="tab" aria-selected="${k === tab}" data-act="you-tab" data-v="${k}">${l}</button>`).join('')}<i style="transform:translateX(${Math.max(0, ti) * 100}%)"></i></nav>`;
+    h += `<div class="ypane" data-pane="${tab}">`;
+    if (tab === 'passport') h += passportHtml();
+    else if (tab === 'phone') {
+      h += `<div class="group" style="margin-top:12px">` + row('data-act="dnd"', ic('moon'), 'Do Not Disturb', D.dnd ? 'Calls and notifications are silenced' : 'Silences calls and notifications on the phone', `<span class="switch ${D.dnd ? 'on' : ''}" role="switch" aria-checked="${D.dnd}"></span>`) + '</div>';
+      h += `<div class="stats">` +
+        `<div class="stat"><small>Battery</small><b>${b.pct != null ? b.pct + '%' : '–'}</b><div class="meter ${b.pct < 20 ? 'low' : ''}"><i style="width:${b.pct || 0}%"></i></div><span>${b.charging ? 'Charging' : 'On battery'}</span></div>` +
+        `<div class="stat"><small>Storage</small><b>${gb(used)}</b><div class="meter"><i style="width:${dv.total ? Math.round(used / dv.total * 100) : 0}%"></i></div><span>of ${gb(dv.total)}</span></div>` +
+        `<div class="stat"><small>In the shade</small><b>${liveN}</b><span>from ${plural(liveApps, 'app')}</span></div>` +
+        `<div class="stat"><small>Device</small><b>${esc(dv.model || 'Android')}</b><span>Android ${esc(dv.android || '')}</span></div></div>`;
+      h += `<div class="group">` + row('data-act="ov" data-v="perms"', ic('shield'), 'Permissions', 'Notifications, calendar, contacts, Do Not Disturb', `<span class="rv">${granted} of 6</span>`) + '</div>';
+    } else {
+      h += `<div class="group" style="margin-top:12px">` +
+        row('data-act="ov" data-v="fun"', ic('dice'), 'Fun stuff', 'Colors, wallpapers, fonts, icon shapes, toys', ic('chev-r', 'sm'), 'fun-row') +
+        row('data-act="ov" data-v="appearance"', ic('contrast'), 'Appearance', 'Theme, density, rail, banner', `<span class="rv">${esc(D.skin === 'auto' ? 'Auto' : D.skin[0].toUpperCase() + D.skin.slice(1))}</span>`) +
+        row('data-act="ov" data-v="spaces"', ic('layers'), 'Spaces', 'Order, names, which apps go where', `<span class="rv">${arr(D.spaces).length}</span>`) +
+        row('data-act="ov" data-v="hidden"', ic('eye-off'), 'Hidden apps', '', `<span class="rv">${D.hidden.length}</span>`) +
+        (p.isHome ? '' : row('data-act="set-home"', ic('home'), 'Make Switchboard your home screen', 'Choose it in the home app picker', ic('chev-r', 'sm'))) +
+        `</div><div class="foot">${ic('jack', 'xs')}Switchboard <code>${esc(B.version() || '')}</code></div>`;
+    }
+    h += '</div>';
+    body.innerHTML = h;
+    body.scrollTop = top;
+    $('#youDock').innerHTML = [['fun', 'dice', 'Fun'], ['appearance', 'contrast', 'Theme'], ['perms', 'shield', 'Access']]
+      .map(([v, i, l]) => `<button data-act="ov" data-v="${v}">${ic(i)}${l}</button>`).join('');
+  }
+  function openYou(tab) {
+    if (tab) S.youTab = tab;
+    closeSheet(); hidePicker();
+    S.you = true;
+    renderYou();
+    $('#youBody').scrollTop = 0;
+    $('#you').classList.add('on'); $('#scrim').classList.add('on');
+    $('#views').inert = true; $('#tabs').inert = true;
+    renderTabs();
+    if (B.haptic) B.haptic('tick');
+  }
+  function closeYou() {
+    if (!S.you) return;
+    S.you = false;
+    const y = $('#you'); y.classList.remove('on', 'drag'); y.style.transform = '';
+    if (!S.sheet) $('#scrim').classList.remove('on');
+    if (S.wide || S.pos === 'list') { $('#views').inert = false; $('#tabs').inert = false; }
+    renderTabs();
   }
   function renderPage() {
     if (S.tab === 'home') { renderRail(); renderList(); }
     else if (S.tab === 'inbox') renderInbox();
     else if (S.tab === 'activity') renderActivity();
-    else renderYou();
+    if (S.you) renderYou();
   }
   const chatVisible = () => S.wide || S.pos !== 'list';
   function renderAll() {
     renderRail(); renderList();
     if (S.tab !== 'home') renderPage();
     renderTabs(); renderNow();
+    if (S.you) renderYou();
     if (chatVisible()) { S.co = chanObj(S.ch); renderChatHead(S.co); renderMsgs(S.co, true); renderPeople(S.co); }
   }
 
@@ -1651,6 +2030,18 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       prev = m; prevAu = au;
     }
     el.innerHTML = out.join('');
+    // Messages that weren't on screen a moment ago slide in; Operator "types" for half a second first.
+    const prevIds = S.drawn && S.drawn.ch === c.id ? S.drawn.ids : null;
+    S.drawn = { ch: c.id, ids: new Set(list.map(m => m.id)) };
+    if (prevIds && motionOK()) {
+      for (const node of el.querySelectorAll('[data-mid]')) {
+        if (prevIds.has(node.dataset.mid)) continue;
+        const m = list.find(x => x.id === node.dataset.mid);
+        node.classList.add('enter');
+        if (m && m.who === 'op' && node.matches('.msg')) node.classList.add('typing');
+      }
+      if ((!keep || atBottom) && el.querySelector('.typing')) setTimeout(() => { el.scrollTop = el.scrollHeight; }, 580);
+    }
     if (!keep || atBottom) el.scrollTop = el.scrollHeight;
   }
   function mrow(o) {
@@ -1756,7 +2147,39 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     if (pos) setPos(pos);
     if (S.wide) { renderList(); if (S.tab === 'inbox') renderInbox(); }
   }
+  // Pulling down past the top of a list drops #feed in from above; pushing up past the newest message sends it back up.
+  function openFeedFromTop() {
+    closeSheet(); closeYou();
+    if (S.ov) { S.ov = null; S.ppDraft = null; const o = $('#overlay'); o.hidden = true; o.innerHTML = ''; o.classList.remove('has-az'); }
+    if (S.wide) { openChannel('home:feed'); return; }
+    const ch = $('#chat');
+    if (!motionOK()) { openChannel('home:feed'); return; }
+    ch.classList.add('drag'); ch.classList.remove('at-chat', 'at-people');
+    ch.style.transform = 'translate3d(0,-100%,0)';
+    void ch.offsetWidth;
+    ch.classList.remove('drag'); ch.classList.add('vslide');
+    ch.style.transform = '';
+    openChannel('home:feed');
+    setTimeout(() => ch.classList.remove('vslide'), 460);
+  }
+  function closeChatUp() {
+    if (S.wide) return;
+    const ch = $('#chat');
+    if (!motionOK()) return setPos('list');
+    ch.classList.add('vslide');
+    ch.style.transform = 'translate3d(0,-100%,0)';
+    $('#views').inert = false;
+    setTimeout(() => {
+      ch.classList.add('drag'); ch.classList.remove('vslide');
+      ch.style.transform = '';
+      setPos('list');
+      void ch.offsetWidth;
+      ch.classList.remove('drag');
+    }, 400);
+  }
   function setTab(t) {
+    if (t === 'you') return S.you ? closeYou() : openYou();
+    if (S.you) closeYou();
     if (S.tab === 'activity' && t !== 'activity') { D.seen.activity = now(); save(); }
     S.tab = t;
     for (const v of document.querySelectorAll('.view')) v.classList.toggle('on', v.dataset.view === t);
@@ -1768,6 +2191,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     if (S.sheet) return closeSheet();
     if (!$('#picker').hidden) return hidePicker();
     if (S.ov) return closeOverlay();
+    if (S.you) return closeYou();
     if (S.wide) {
       if (S.drawer) return setPos('people');
       if (S.tab !== 'home') return setTab('home');
@@ -1780,8 +2204,8 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     if (S.space !== 'home') return setSpace('home');
   }
   function goHome() {
-    const already = !S.sheet && !S.ov && (S.wide || S.pos === 'list') && S.tab === 'home';
-    closeSheet(); closeOverlay(); hidePicker();
+    const already = !S.sheet && !S.ov && !S.you && (S.wide || S.pos === 'list') && S.tab === 'home';
+    closeSheet(); closeOverlay(); closeYou(); hidePicker();
     if (!S.wide && S.pos !== 'list') setPos('list');
     if (S.tab !== 'home') setTab('home');
     if (already && S.space !== 'home') setSpace('home');
@@ -1813,6 +2237,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
   /* ---------- actions ---------- */
   function launchApp(a, via) {
     if (!a) return;
+    S.picked = { key: a.key, until: now() + 1900 };
     B.launch(a.key);
     if (B.haptic) B.haptic('tick');
     D.recent = [a.key].concat(D.recent.filter(k => k !== a.key)).slice(0, 8);
@@ -1855,8 +2280,27 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     const t = spaceOf(spaceId); if (t) t.apps.push(a.key);
     save(); renderAll();
   }
-  function createSpace(name) {
-    const sp = { id: uid(name), name: String(name).slice(0, 40), glyph: '', apps: [] };
+  // A space without a name you gave it is called after its first apps.
+  function autoName(sp) {
+    const l = spaceApps(sp).map(a => a.label);
+    if (!l.length) return 'New space';
+    if (l.length === 1) return l[0];
+    if (l.length === 2) return l[0] + ' & ' + l[1];
+    return `${l[0]}, ${l[1]} +${l.length - 2}`;
+  }
+  // Search inside an app picker: hides rows that don't match, and letter lines left empty.
+  function filterApps(body, q) {
+    const k = norm(q);
+    let any = false;
+    for (const r of body.querySelectorAll('[data-find]')) { const on = !k || r.dataset.find.includes(k) || r.dataset.find.split(/\s+/).some(w => w.startsWith(k)); r.hidden = !on; any = any || on; }
+    for (const g of body.querySelectorAll('.group')) if (g.querySelector('[data-find]')) g.hidden = ![...g.querySelectorAll('[data-find]')].some(r => !r.hidden);
+    for (const sep of body.querySelectorAll('.lsep')) { const g = sep.nextElementSibling; sep.hidden = !!(g && g.hidden); }
+    const sect = body.querySelector('[data-sect="mine"] .label'); if (sect) sect.hidden = !!k && !body.querySelector('[data-sect="mine"] [data-find]:not([hidden])');
+    const none = body.querySelector('.sp-none'); if (none) none.hidden = any;
+    const az = body.parentElement.querySelector('.az'); if (az) az.style.visibility = k ? 'hidden' : '';
+  }
+  function createSpace(name, auto) {
+    const sp = { id: uid(name), name: String(name).slice(0, 40), glyph: '', apps: [], auto: !!auto };
     D.spaces.push(sp); save(); renderAll();
     return sp;
   }
@@ -2211,12 +2655,13 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     D.skin = k; save(); applySkin(); sys('contrast', `Theme set to <b>${esc(k)}</b>`);
   }, { icon: 'contrast', group: 'Launcher', sug: r => opts('Theme', 'contrast', ['auto', 'dark', 'black', 'light'], r, x => ({ fill: '/theme ' + x, submit: true })) });
   def('name', '<your name>', 'Change the name on your passport', r => { D.passport.name = r.slice(0, 40); save(); renderAll(); sys('user', `Your name is now <b>${esc(D.passport.name)}</b>`); }, { icon: 'user', group: 'Launcher' });
+  def('status', '<text>', 'Set the bubble on your profile', r => { D.passport.status = r.slice(0, 90); save(); renderAll(); sys('user', r ? `Status set: <b>${esc(D.passport.status)}</b>` : 'Status cleared'); }, { icon: 'chat', group: 'Launcher' });
   def('clear', '', 'Clear this channel', () => { D.logs[here()] = []; save(); if (S.co) renderMsgs(S.co); }, { icon: 'trash', group: 'Launcher' });
   def('help', '', 'Every command', () => op('', { embed: { icon: 'jack', k: 'Commands', help: true } }), { icon: 'info', group: 'Launcher' });
   // Not listed in /help
   def('whoami', '', '', () => {
     const p = D.passport;
-    op('', { embed: { icon: 'user', k: 'Passport', t: p.name, rows: [p.phone && ['Phone', p.phone], p.email && ['Email', p.email]].filter(Boolean).concat(arr(p.links).map(l => [l.label || 'Link', l.url])) }, btns: [btn('Show code', 'qr', '', 'pri')] });
+    op(p.status || '', { embed: { icon: 'user', k: 'Passport', t: p.name, rows: [p.phone && ['Phone', p.phone], p.email && ['Email', p.email]].filter(Boolean).concat(arr(p.links).map(l => [linkName(l), linkShow(l)])) }, btns: [btn('Show code', 'qr', '', 'pri'), btn('Open profile', 'you', '')] });
   }, { hidden: true });
 
   function helpHtml() {
@@ -2385,14 +2830,17 @@ if (typeof module !== 'undefined') module.exports = SBQR;
   function openSheet(html, kind) {
     $('#sheetBody').innerHTML = html;
     S.sheet = kind || 'sheet';
-    $('#sheet').classList.add('on'); $('#scrim').classList.add('on');
+    const sh = $('#sheet'); sh.classList.remove('drag'); sh.style.transform = '';
+    sh.classList.add('on'); $('#scrim').classList.add('on'); $('#scrim').classList.toggle('top', !!S.you);
     $('#sheetBody').scrollTop = 0;
     ta().blur();
   }
   function closeSheet() {
     if (!S.sheet) return;
     S.sheet = null;
-    $('#sheet').classList.remove('on'); $('#scrim').classList.remove('on');
+    const sh = $('#sheet'); sh.classList.remove('on', 'drag'); sh.style.transform = '';
+    $('#scrim').classList.remove('top');
+    if (!S.you) $('#scrim').classList.remove('on');
   }
   const row = (act, icon, title, sub = '', extra = '', cls = '') => `<button class="row ${cls}" ${act}>${icon}<span class="rt"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${extra}</button>`;
   function appSheet(key) {
@@ -2436,8 +2884,8 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     }
     const s = spaceOf(id); if (!s) return;
     const i = D.spaces.indexOf(s);
-    openSheet(`<div class="sh-head"><span class="tile">${s.glyph ? `<span class="glyph">${esc(s.glyph)}</span>` : spaceIcon(s)}</span><div class="tt"><b>${esc(s.name)}</b><small>${plural(spaceApps(s).length, 'app')}</small></div></div><div class="group">` +
-      row(`data-act="ov" data-v="edit-space" data-id="${esc(id)}"`, ic('edit'), 'Edit space', 'Name, icon, apps') +
+    openSheet(`<div class="sh-head"><span class="tile">${spaceIcon(s)}</span><div class="tt"><b>${esc(s.name)}</b><small>${plural(spaceApps(s).length, 'app')}</small></div></div><div class="group">` +
+      row(`data-act="ov" data-v="edit-space" data-id="${esc(id)}"`, ic('plus'), 'Add or remove apps', 'Search, pick, done') +
       row(`data-act="space-read" data-id="${esc(id)}"`, ic('checks'), 'Mark #activity as read') +
       (i > 0 ? row(`data-act="sp-move" data-id="${esc(id)}" data-v="-1"`, ic('up'), 'Move up') : '') +
       (i < D.spaces.length - 1 ? row(`data-act="sp-move" data-id="${esc(id)}" data-v="1"`, ic('down'), 'Move down') : '') +
@@ -2514,17 +2962,26 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     openSheet(`<div class="sh-head"><span class="av op">${ic('edit')}</span><div class="tt"><b>New message</b><small>Favorites from Contacts</small></div></div><div class="group">` +
       (S.contacts.length ? S.contacts.map(p => row(`data-act="contact" data-id="${esc(p.id)}"`, avHtml({ name: p.name }), p.name, p.phone)).join('') : row('data-act="perm" data-v="contacts"', ic('user'), 'Allow contacts', 'Starred contacts appear here')) + '</div>', 'compose');
   }
-  function qrSheet() {
-    const p = D.passport, q = qrSvg();
+  // The code can carry the whole contact card or any one link (show someone your Venmo, your Instagram…).
+  function qrSheet(swap) {
+    const p = D.passport, links = arr(p.links).filter(l => linkUrl(l));
+    const i = Math.max(-1, Math.min(links.length - 1, S.qrIdx == null ? -1 : S.qrIdx)), l = links[i];
+    const q = qrSvg(l ? linkUrl(l) : undefined);
     if (!q) return toast('Add your number or email first');
-    openSheet(`<div class="sh-head">${meAv()}<div class="tt"><b>${esc(p.name)}</b><small>Scan with any phone camera to save this contact</small></div></div>` +
-      `<div class="qr-big">${q}</div><div style="padding:0 12px"><button class="btn wide" data-act="b" data-a="copy" data-v="${esc([p.name, p.phone, p.email].concat(arr(p.links).map(l => l.url)).filter(Boolean).join('\n'))}">${ic('copy')}Copy contact details</button></div>`, 'qr');
+    const chips = `<div class="qrpick">` + `<button class="${i < 0 ? 'on' : ''}" data-act="qr-pick" data-i="-1">${ic('user')}Contact</button>` +
+      links.map((x, j) => `<button class="${i === j ? 'on' : ''}" data-act="qr-pick" data-i="${j}">${ic(linkDef(x).i)}${esc(linkName(x))}</button>`).join('') + '</div>';
+    const all = [p.name, p.phone, p.email].concat(arr(p.links).map(x => linkUrl(x) || linkName(x) + ': ' + linkShow(x))).filter(Boolean).join('\n');
+    const html = `<div class="sh-head">${meAv()}<div class="tt"><b>${esc(p.name)}</b><small>${l ? `Scan to open my ${esc(linkName(l))}` : 'Scan with any phone camera to save this contact'}</small></div></div>` + chips +
+      `<div class="qr-big ${swap ? 'flip' : ''}">${q}</div>${l ? `<div class="qr-cap">${esc(linkShow(l))}</div>` : ''}<div style="padding:0 12px"><button class="btn wide" data-act="b" data-a="copy" data-v="${esc(l ? linkUrl(l) : all)}">${ic('copy')}${l ? 'Copy link' : 'Copy contact details'}</button></div>`;
+    if (swap && S.sheet === 'qr') { const sb = $('#sheetBody'), x = sb.querySelector('.qrpick').scrollLeft; sb.innerHTML = html; sb.querySelector('.qrpick').scrollLeft = x; if (B.haptic) B.haptic('tick'); return; }
+    S.qrIdx = i;
+    openSheet(html, 'qr');
   }
 
   /* ---------- overlays ---------- */
   const ovHead = t => `<header class="ov-head"><button class="icon-btn" data-act="ov-close" aria-label="Back">${ic('back')}</button><h2>${esc(t)}</h2></header>`;
-  function openOverlay(kind, arg) { closeSheet(); S.ov = { kind, arg }; $('#overlay').hidden = false; renderOverlay(); }
-  function closeOverlay() { if (!S.ov) return; S.ov = null; const o = $('#overlay'); o.hidden = true; o.innerHTML = ''; renderAll(); }
+  function openOverlay(kind, arg) { closeSheet(); S.ov = { kind, arg }; S.ppDraft = null; S.ppFocused = false; const o = $('#overlay'); o.classList.remove('has-az'); o.hidden = false; renderOverlay(); }
+  function closeOverlay() { if (!S.ov) return; S.ov = null; S.ppDraft = null; const o = $('#overlay'); o.hidden = true; o.innerHTML = ''; o.classList.remove('has-az'); renderAll(); }
   function renderOverlay() {
     const o = $('#overlay'), { kind, arg } = S.ov;
     let h = '';
@@ -2538,17 +2995,28 @@ if (typeof module !== 'undefined') module.exports = SBQR;
         `<div class="label">Banner</div><div class="swatches">${BANNERS.map((c, i) => `<button class="sw ${D.banner === i ? 'on' : ''}" style="background:${c}" data-act="banner" data-v="${i}" aria-label="Banner color ${i + 1}"></button>`).join('')}</div>` +
         `<div class="group" style="margin-top:16px">${row('data-act="ov" data-v="fun"', ic('dice'), 'Fun stuff', 'Accents, wallpapers, fonts, icon shapes', ic('chev-r', 'sm'), 'fun-row')}</div></div>`;
     } else if (kind === 'passport') {
-      const p = D.passport, links = arr(p.links).concat([{ label: '', url: '' }]).slice(0, 5);
-      h = ovHead('Edit passport') + `<div class="ov-body">` +
-        `<div class="label">Name</div><input class="inp" id="ppName" maxlength="40" autocomplete="name" value="${esc(p.name)}">` +
-        `<div class="label">Line under your name</div><input class="inp" id="ppNote" maxlength="80" placeholder="A city, a role, anything short" value="${esc(p.note)}">` +
-        `<div class="label">Phone</div><input class="inp" id="ppPhone" type="tel" maxlength="30" autocomplete="tel" value="${esc(p.phone)}">` +
-        `<div class="label">Email</div><input class="inp" id="ppEmail" type="email" maxlength="80" autocomplete="email" value="${esc(p.email)}">` +
-        `<div class="label">Links</div>${links.map((l, i) => `<div class="linkrow"><input class="inp" id="ppL${i}l" maxlength="24" placeholder="Label" aria-label="Link ${i + 1} label" value="${esc(l.label)}"><input class="inp" id="ppL${i}u" type="url" maxlength="200" placeholder="https://" aria-label="Link ${i + 1} address" value="${esc(l.url)}"></div>`).join('')}` +
-        `<div class="empty-note">Everything here goes into the code on your passport. It stays on this phone.</div>` +
+      // Edits go into a draft so adding or removing a link keeps what you typed; Save writes it.
+      if (!S.ppDraft) S.ppDraft = JSON.parse(JSON.stringify(D.passport));
+      const p = S.ppDraft, body = $('#ppBody'), top = body ? body.scrollTop : 0;
+      const used = new Set(p.links.map(l => l.type));
+      const f = (id, label, key, attrs) => `<div class="label">${label}</div><input class="inp" id="${id}" data-pp="${key}" ${attrs} value="${esc(p[key] || '')}">`;
+      h = ovHead('Edit passport') + `<div class="ov-body" id="ppBody">` +
+        f('ppName', 'Name', 'name', 'maxlength="40" autocomplete="name"') +
+        f('ppStatus', 'Status bubble', 'status', 'maxlength="90" placeholder="What are you up to?"') +
+        f('ppNote', 'Line under your name', 'note', 'maxlength="80" placeholder="A city, a role, anything short"') +
+        f('ppPhone', 'Phone', 'phone', 'type="tel" maxlength="30" autocomplete="tel"') +
+        f('ppEmail', 'Email', 'email', 'type="email" maxlength="80" autocomplete="email"') +
+        `<div class="label">Connections<span style="float:right;letter-spacing:0">${p.links.length} of ${MAX_LINKS}</span></div>` +
+        p.links.map((l, i) => { const d = linkDef(l); return `<div class="lrow"><span class="lki">${ic(d.i, 'sm')}</span><div><label for="ppL${i}">${esc(d.n)}</label><input class="inp" id="ppL${i}" data-pp="link" data-i="${i}" maxlength="200" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="${esc(d.ph)}" value="${esc(l.v)}"></div><button class="icon-btn" data-act="pp-del" data-i="${i}" aria-label="Remove ${esc(d.n)}">${ic('x', 'sm')}</button></div>`; }).join('') +
+        (p.links.length < MAX_LINKS ? `<div class="addlinks">${LINK_ORDER.filter(k => k === 'other' || !used.has(k)).map(k => `<button data-act="pp-add" data-v="${k}">${ic(LINKS[k].i)}${esc(LINKS[k].n)}</button>`).join('')}</div>` : '') +
+        `<div class="empty-note">Everything here goes into the code on your passport, and each link gets its own code too. It stays on this phone.</div>` +
         `<div style="padding:8px 12px 16px"><button class="btn pri wide" data-act="save-passport">Save</button></div></div>`;
+      o.innerHTML = h;
+      $('#ppBody').scrollTop = top;
+      if (arg === 'status' && !S.ppFocused) { S.ppFocused = true; setTimeout(() => { const i = $('#ppStatus'); if (i) { i.focus({ preventScroll: true }); i.select(); } }, 80); }
+      return;
     } else if (kind === 'spaces') {
-      h = ovHead('Spaces') + `<div class="ov-body"><div class="group">` + arr(D.spaces).map((s, i) => `<div class="row"><span class="tile" style="width:36px;height:36px;border-radius:11px">${s.glyph ? `<span class="glyph">${esc(s.glyph)}</span>` : spaceIcon(s)}</span><span class="rt"><b>${esc(s.name)}</b><small>${plural(spaceApps(s).length, 'app')}</small></span>` +
+      h = ovHead('Spaces') + `<div class="ov-body"><div class="group">` + arr(D.spaces).map((s, i) => `<div class="row"><span class="tile" style="width:36px;height:36px;border-radius:11px">${spaceIcon(s)}</span><span class="rt"><b>${esc(s.name)}</b><small>${plural(spaceApps(s).length, 'app')}</small></span>` +
         `<button class="icon-btn" data-act="sp-move" data-id="${esc(s.id)}" data-v="-1" aria-label="Move ${esc(s.name)} up" ${i === 0 ? 'disabled style="opacity:.3"' : ''}>${ic('up', 'sm')}</button>` +
         `<button class="icon-btn" data-act="sp-move" data-id="${esc(s.id)}" data-v="1" aria-label="Move ${esc(s.name)} down" ${i === D.spaces.length - 1 ? 'disabled style="opacity:.3"' : ''}>${ic('down', 'sm')}</button>` +
         `<button class="icon-btn" data-act="ov" data-v="edit-space" data-id="${esc(s.id)}" aria-label="Edit ${esc(s.name)}">${ic('chev-r', 'sm')}</button></div>`).join('') +
@@ -2557,15 +3025,25 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       const home = arg === 'home', s = home ? null : spaceOf(arg);
       if (!home && !s) return closeOverlay();
       const inSet = k => (home ? D.pinned.includes(k) : s.apps.includes(k));
-      const list = visApps().slice().sort((x, y) => (inSet(y.key) - inSet(x.key)) || x.label.localeCompare(y.label));
-      h = ovHead(home ? 'Pinned apps' : 'Edit space') + '<div class="ov-body">' +
-        (home ? '' : `<div class="label">Name</div><input class="inp" id="spName" maxlength="40" value="${esc(s.name)}"><div class="label">Icon</div><input class="inp" id="spGlyph" maxlength="2" placeholder="One or two characters. Empty uses app icons." value="${esc(s.glyph)}">`) +
-        `<div class="label">Apps</div><div class="group" id="spApps">${list.map(a => row(`data-act="sp-toggle" data-key="${esc(a.key)}"`, `<img src="${esc(a.icon)}" alt="">`, a.label, '', `<span class="check ${inSet(a.key) ? 'on' : ''}">${ic('check')}</span>`)).join('')}</div>` +
-        (home ? '' : `<div style="padding:8px 12px"><button class="btn wide danger" data-act="sp-del" data-id="${esc(s.id)}">Delete space</button></div>`) + '</div>';
+      const appR = a => row(`data-act="sp-toggle" data-key="${esc(a.key)}" data-find="${esc(norm(a.label))}"`, `<img src="${esc(a.icon)}" alt="" loading="lazy">`, a.label, '', `<span class="check ${inSet(a.key) ? 'on' : ''}">${ic('check')}</span>`);
+      const mine = (home ? pinnedApps() : spaceApps(s)), rest = visApps().filter(a => !inSet(a.key));
+      // No title or icon to fill in: the tile shows the space's own app icons, and the name follows its apps until you rename it.
+      h = ovHead(home ? 'Pinned apps' : s.name) + '<div class="ov-body" id="spBody">' +
+        `<div class="findbar">${ic('search', 'sm')}<input id="spFind" type="search" placeholder="Search apps" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"></div>` +
+        `<div class="sp-sect" data-sect="mine">` + (mine.length ? `<div class="label">${home ? 'Pinned' : 'In this space'}<span style="float:right;letter-spacing:0">${mine.length}</span></div><div class="group">${mine.map(appR).join('')}</div>` : '') + '</div>' +
+        `<div class="label sp-addlabel">Add apps</div>` + lettered(rest, appR, x => `<div class="group">${x}</div>`) +
+        `<div class="empty-note sp-none" hidden>No app matches that.</div>` +
+        (home ? '' : `<div class="label">Rename (optional)</div><input class="inp" id="spName" maxlength="40" placeholder="Named after its apps" value="${s.auto ? '' : esc(s.name)}">` +
+          `<div style="padding:16px 12px 8px"><button class="btn wide danger" data-act="sp-del" data-id="${esc(s.id)}">Delete space</button></div>`) + '</div>';
       o.innerHTML = h;
+      mountAZ(o, $('#spBody'));
+      $('#spFind').addEventListener('input', e => filterApps($('#spBody'), e.target.value));
       if (!home) {
-        $('#spName').addEventListener('input', e => { s.name = e.target.value.slice(0, 40) || 'Untitled'; save(); });
-        $('#spGlyph').addEventListener('input', e => { s.glyph = e.target.value.trim().slice(0, 2); save(); });
+        $('#spName').addEventListener('input', e => {
+          const v = e.target.value.trim().slice(0, 40);
+          s.auto = !v; s.name = v || autoName(s); save();
+          const t = o.querySelector('.ov-head h2'); if (t) t.textContent = s.name;
+        });
       }
       return;
     } else if (kind === 'fun') {
@@ -2672,20 +3150,26 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     },
     cebar: () => { if (!D.mate) return; D.mate.n = Math.min(MATE_MAX, D.mate.n + 1); updateMate(); },
     yerba: () => { if (!D.mate) return; D.mate.n = 0; updateMate(); },
-    qr: () => qrSheet()
+    qr: () => { S.qrIdx = -1; qrSheet(); },
+    you: () => openYou('passport')
   };
   const ACT = {
     space: t => { setSpace(t.dataset.id); },
     'space-new': t => {
-      const sp = createSpace('New space');
-      if (t.dataset.key) { sp.apps.push(t.dataset.key); save(); }
+      const sp = createSpace('New space', true);
+      if (t.dataset.key) { sp.apps.push(t.dataset.key); sp.name = autoName(sp); save(); }
       setSpace(sp.id); openOverlay('edit-space', sp.id);
-      setTimeout(() => { const n = $('#spName'); if (n) { n.focus(); n.select(); } }, 60);
     },
     'space-menu': () => spaceSheet(S.space),
+    'open-cal': () => { const a = calApp(); if (a) launchApp(a); else toast('No calendar app found'); },
     doorway: () => { closeOverlay(); openChannel('home:feed'); ta().focus({ preventScroll: true }); },
     chan: t => { closeOverlay(); openChannel(t.dataset.id); },
-    launch: t => { const a = appOf(t.dataset.key); closeSheet(); launchApp(a); },
+    launch: t => {
+      const a = appOf(t.dataset.key); closeSheet();
+      // Light up the row first (the highlight is still fading when you come back), then open the app.
+      if (t.matches('.chan,.mrow') && motionOK()) { t.classList.remove('picked'); void t.offsetWidth; t.classList.add('picked'); setTimeout(() => launchApp(a), 90); }
+      else launchApp(a);
+    },
     cat: t => { const id = t.dataset.id; D.collapsed[id] = !D.collapsed[id]; save(); renderList(); },
     'media-open': () => { const a = S.media && appPkg(S.media.pkg); if (a) launchApp(a); },
     media: t => B.mediaCmd(t.dataset.cmd),
@@ -2694,7 +3178,23 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     'to-people': () => setPos('people'),
     quick: () => quickSheet(),
     slash: () => { const v = ta().value; if (!v) setInput('/'); else if (v === '/') setInput(''); ta().focus({ preventScroll: true }); updatePicker(); },
-    'close-sheet': () => closeSheet(),
+    'close-sheet': () => { if (S.sheet) closeSheet(); else closeYou(); },
+    'you-close': () => closeYou(),
+    'you-tab': t => { S.youTab = t.dataset.v; renderYou(); },
+    'pp-link': t => {
+      const l = arr(D.passport.links).filter(x => x.v)[+t.dataset.i]; if (!l) return;
+      const u = linkUrl(l);
+      if (u && !linkDef(l).copy) return B.url(u);
+      copy(u || bare(l.v)); toast(`Copied your ${linkName(l)} ${u ? 'link' : 'name'}`);
+    },
+    'qr-pick': t => { S.qrIdx = +t.dataset.i; qrSheet(true); },
+    'pp-add': t => {
+      const d = S.ppDraft; if (!d) return;
+      if (d.links.length >= MAX_LINKS) return toast(`Up to ${MAX_LINKS} links`);
+      d.links.push({ type: t.dataset.v, v: '', label: '' }); renderOverlay();
+      setTimeout(() => { const i = $('#ppL' + (d.links.length - 1)), b = $('#ppBody'); if (i && b) { b.scrollTop = Math.max(0, i.closest('.lrow').offsetTop - b.clientHeight / 2); i.focus({ preventScroll: true }); } }, 40);
+    },
+    'pp-del': t => { const d = S.ppDraft; if (!d) return; d.links.splice(+t.dataset.i, 1); renderOverlay(); },
     b: t => { const f = BTN[t.dataset.a]; if (f) f(t.dataset.v, t); },
     opt: t => choose(+t.dataset.i),
     convo: t => { closeSheet(); openChannel('dm:' + t.dataset.key); },
@@ -2705,7 +3205,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     dnd: () => setDnd(!D.dnd),
     'pp-copy': t => copy(t.dataset.v),
     'link-out': t => B.url(t.dataset.v),
-    'qr-big': () => qrSheet(),
+    'qr-big': () => { S.qrIdx = -1; qrSheet(); },
     ov: t => openOverlay(t.dataset.v, t.dataset.id),
     'ov-close': () => closeOverlay(),
     perm: t => B.askPerm(t.dataset.v),
@@ -2724,22 +3224,22 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     'fun-party': () => party(),
     'fun-reset': () => { D.fun = Object.assign({}, FUN_DEF); save(); applyFun(); renderOverlay(); toast('Back to the defaults'); },
     'save-passport': () => {
-      const v = id => ($('#' + id) || {}).value || '';
-      const links = [];
-      for (let i = 0; i < 5; i++) {
-        let u = v(`ppL${i}u`).trim(); const l = v(`ppL${i}l`).trim();
-        if (!u) continue;
-        if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
-        links.push({ label: l.slice(0, 24), url: u.slice(0, 200) });
-      }
-      D.passport = { name: v('ppName').trim().slice(0, 40) || D.passport.name, note: v('ppNote').trim().slice(0, 80), phone: v('ppPhone').trim().slice(0, 30), email: v('ppEmail').trim().slice(0, 80), links };
+      const d = S.ppDraft; if (!d) return closeOverlay();
+      const t = (x, n) => String(x || '').trim().slice(0, n);
+      D.passport = { name: t(d.name, 40) || D.passport.name, status: t(d.status, 90), note: t(d.note, 80), phone: t(d.phone, 30), email: t(d.email, 80),
+        links: d.links.map(l => ({ type: l.type, v: t(l.v, 200), label: l.label || '' })).filter(l => l.v).slice(0, MAX_LINKS) };
+      S.qrIdx = -1;
       save(); closeOverlay(); toast('Passport saved');
     },
     'sp-toggle': t => {
       const k = t.dataset.key, id = S.ov && S.ov.arg;
       if (id === 'home') D.pinned = D.pinned.includes(k) ? D.pinned.filter(x => x !== k) : D.pinned.concat(k);
-      else { const s = spaceOf(id); if (!s) return; s.apps = s.apps.includes(k) ? s.apps.filter(x => x !== k) : s.apps.concat(k); }
-      save(); t.querySelector('.check').classList.toggle('on');
+      else {
+        const s = spaceOf(id); if (!s) return;
+        s.apps = s.apps.includes(k) ? s.apps.filter(x => x !== k) : s.apps.concat(k);
+        if (s.auto) { s.name = autoName(s); const h2 = $('#overlay .ov-head h2'); if (h2) h2.textContent = s.name; }
+      }
+      save(); t.querySelector('.check').classList.toggle('on'); renderRail();
     },
     'sp-move': t => {
       const i = D.spaces.findIndex(s => s.id === t.dataset.id), j = i + +t.dataset.v;
@@ -2776,6 +3276,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     'move-toggle': t => {
       const s = spaceOf(t.dataset.id), k = t.dataset.key; if (!s) return;
       s.apps = s.apps.includes(k) ? s.apps.filter(x => x !== k) : s.apps.concat(k);
+      if (s.auto) s.name = autoName(s);
       save(); t.querySelector('.check').classList.toggle('on'); renderRail(); renderList();
     },
     'pin-toggle': t => {
@@ -2837,8 +3338,12 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       lastType = e.pointerType; suppress = false;
       if (S.wide) S.focus = e.target.closest('#chat,#people') ? 'chat' : e.target.closest('#views,#tabs,#nowbar') ? 'list' : S.focus;
       const t = e.target.closest('[data-long]');
-      if (!t || e.pointerType === 'mouse') return;
-      lp = { t, x: e.clientX, y: e.clientY, timer: setTimeout(() => { suppress = true; lp = null; if (B.haptic) B.haptic('long'); onLong(t); }, 460) };
+      if (!t || (e.pointerType === 'mouse' && (!t.matches('.tile') || e.button !== 0))) return;
+      lp = { t, x: e.clientX, y: e.clientY, timer: setTimeout(() => {
+        suppress = true; if (B.haptic) B.haptic('long');
+        if (t.matches('.tile[data-long="space"]') && startSort(t)) { lp = null; return; }
+        lp = null; onLong(t);
+      }, 460) };
     });
     const cancelLp = () => { if (lp) { clearTimeout(lp.timer); lp = null; } };
     app.addEventListener('pointermove', e => { if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 10) cancelLp(); });
@@ -2852,12 +3357,13 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     });
 
     // Sideways swipes move the conversation layer between list, chat and drawer (folded screen only).
+    // From Home, a short flick toward the left is enough to bring in #feed.
     let d = null;
     const W = () => app.clientWidth, PW = () => app.clientWidth * 0.84;
     const posX = p => (p === 'list' ? W() : p === 'people' ? -PW() : 0);
     app.addEventListener('pointerdown', e => {
-      if (S.wide || (e.pointerType === 'mouse' && e.button !== 0) || S.sheet || S.ov) return;
-      if (e.target.closest('textarea,input,.picker,.favs,.seg,.nowbar,.tabs')) return;
+      if (S.wide || (e.pointerType === 'mouse' && e.button !== 0) || S.sheet || S.ov || S.you || S.drag) return;
+      if (e.target.closest('textarea,input,.picker,.favs,.seg,.nowbar,.tabs,.az')) return;
       let zone = null;
       if (e.target.closest('#chat') || (S.pos === 'people' && e.target.closest('#people'))) zone = 'chat';
       else if (S.pos === 'list' && S.tab === 'home' && e.target.closest('#v-home')) zone = 'home';
@@ -2866,14 +3372,15 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     });
     app.addEventListener('pointermove', e => {
       if (!d || e.pointerId !== d.id) return;
+      if (S.drag || (rb && rb.on)) { d = null; return; }
       const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
       if (!d.on) {
-        if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { d = null; return; }
-        if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+        if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.3) { d = null; return; }
+        if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 0.9) return;
         if (d.zone === 'home' && dx > 0) { d = null; return; }
         if (d.base === -PW() && dx < 0) { d = null; return; }
-        d.on = true; cancelLp();
-        if (d.zone === 'home') { S.enterSeen = D.seen[S.ch] || 0; renderChat(); }
+        d.on = true; cancelLp(); unpress();
+        if (d.zone === 'home') { if (S.ch !== 'home:feed') { S.ch = 'home:feed'; S.reply = null; } S.enterSeen = D.seen[S.ch] || 0; renderChat(); }
         chat.classList.add('drag');
         try { app.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
       }
@@ -2889,9 +3396,10 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       chat.classList.remove('drag'); chat.style.transform = '';
       const v = (g.x - g.base) / Math.max(1, performance.now() - g.t0);
       let target;
-      if (g.base === W()) target = g.x < W() * 0.72 || v < -0.4 ? 'chat' : 'list';
-      else if (g.base === 0) target = g.x > W() * 0.28 || v > 0.45 ? 'list' : g.x < -PW() * 0.28 || v < -0.45 ? 'people' : 'chat';
-      else target = g.x > W() * 0.25 ? 'list' : g.x > -PW() * 0.62 || v > 0.4 ? 'chat' : 'people';
+      if (g.base === W()) target = g.x < W() * 0.82 || v < -0.25 ? 'chat' : 'list';
+      else if (g.base === 0) target = g.x > W() * 0.25 || v > 0.35 ? 'list' : g.x < -PW() * 0.25 || v < -0.35 ? 'people' : 'chat';
+      else target = g.x > W() * 0.25 ? 'list' : g.x > -PW() * 0.62 || v > 0.35 ? 'chat' : 'people';
+      if (target === 'chat' && g.base === W() && S.ch === 'home:feed') D.lastCh = 'home:feed';
       setPos(target);
       if (target === 'chat') setTimeout(() => { if (S.pos === 'chat') people.classList.remove('show'); }, 300);
     };
@@ -2899,25 +3407,167 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     app.addEventListener('pointercancel', end);
     chat.addEventListener('transitionend', () => { if (!S.wide && S.pos !== 'people') people.classList.remove('show'); });
 
-    // Vertical pulls on the channel list: up past the end opens All apps, down at the top pulls the shade.
-    let pv = null;
-    views.addEventListener('touchstart', e => {
-      pv = null;
-      if (S.tab !== 'home' || e.touches.length !== 1) return;
-      const list = e.target.closest('.chanlist'); if (!list) return;
-      const sc = list.querySelector('.chan-scroll');
-      pv = { y0: e.touches[0].clientY, x0: e.touches[0].clientX, sc, list, top: sc.scrollTop <= 0, bottom: sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2, done: false };
+    // Floaty overscroll on every list. Past the top: #feed (or closes a sheet). Past the end of Home or a space: All apps.
+    // Past the newest message in a conversation: back to the list. On the rail, past the top: the notification shade.
+    const cue = $('#pullcue');
+    const ACTS = {
+      feed: { dir: 1, label: () => `${ic('hash', 'xs')}feed`, run: () => openFeedFromTop() },
+      all: { dir: -1, label: () => `${ic('grid', 'xs')}All apps`, run: () => setSpace('all') },
+      back: { dir: -1, label: () => `${ic('home', 'xs')}Back to the list`, run: () => closeChatUp() },
+      shade: { dir: 1, label: () => `${ic('bell', 'xs')}Notifications`, run: () => B.shade() },
+      sheet: { dir: 1, follow: '#sheet', run: () => closeSheet() },
+      you: { dir: 1, follow: '#you', run: () => closeYou() }
+    };
+    function actFor(sc, dir) {
+      if (sc.matches('.sheet-body')) return dir > 0 ? 'sheet' : null;
+      if (sc.matches('.you-body')) return dir > 0 ? 'you' : null;
+      if (sc.matches('.rail')) return dir > 0 ? 'shade' : null;
+      if (sc.matches('#msgs')) return dir < 0 && !S.wide && S.pos === 'chat' ? 'back' : null;
+      if (sc.matches('.chan-scroll')) return dir > 0 ? 'feed' : S.space !== 'all' ? 'all' : null;
+      return dir > 0 ? 'feed' : null;   // Messages, Activity, overlays (adding apps to a space, settings…)
+    }
+    let rb = null;
+    const damp = y => Math.sign(y) * 110 * (1 - Math.exp(-Math.abs(y) / 260));
+    const atEnd = sc => sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2;
+    app.addEventListener('touchstart', e => {
+      rb = null;
+      if (e.touches.length !== 1 || S.drag || S.azBusy || e.target.closest('textarea,input,.az,.picker,.favs,.qrpick')) return;
+      const sc = e.target.closest('.chan-scroll,.page,.ov-body,#msgs,.sheet-body,.you-body,.rail');
+      if (!sc || (sc.matches('#msgs') && !chatVisible())) return;
+      if (sc.matches('.you-body') && e.target.closest('.you-dock')) return;
+      const t = e.touches[0];
+      rb = { sc, x0: t.clientX, y0: t.clientY, top: sc.scrollTop <= 0, end: atEnd(sc), on: false, dy: 0, ready: false, t0: performance.now() };
     }, { passive: true });
-    views.addEventListener('touchmove', e => {
-      if (!pv || pv.done) return;
-      const dy = e.touches[0].clientY - pv.y0, dx = e.touches[0].clientX - pv.x0;
-      if (Math.abs(dx) > Math.abs(dy)) return;
-      const atBottom = pv.sc.scrollTop + pv.sc.clientHeight >= pv.sc.scrollHeight - 2;
-      pv.list.classList.toggle('pulling', pv.bottom && atBottom && dy < -30 && S.space !== 'all');
-      if (pv.bottom && atBottom && dy < -90 && S.space !== 'all') { pv.done = true; pv.list.classList.remove('pulling'); if (B.haptic) B.haptic('tick'); setSpace('all'); }
-      else if (pv.top && pv.sc.scrollTop <= 0 && dy > 90) { pv.done = true; B.shade(); }
+    app.addEventListener('touchmove', e => {
+      if (!rb) return;
+      if (S.drag) { rb = null; return; }
+      const t = e.touches[0], dy = t.clientY - rb.y0, dx = t.clientX - rb.x0;
+      if (!rb.on) {
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) { rb = null; return; }
+        if (Math.abs(dy) < 6) return;
+        const dir = dy > 0 ? 1 : -1;
+        if (!((dir > 0 && rb.top && rb.sc.scrollTop <= 0) || (dir < 0 && rb.end && atEnd(rb.sc)))) { rb = null; return; }
+        rb.on = true; rb.dir = dir; rb.y0 = t.clientY - dir * 6;
+        rb.act = actFor(rb.sc, dir);
+        const a = rb.act && ACTS[rb.act];
+        rb.el = a && a.follow ? $(a.follow) : rb.sc;
+        rb.el.classList.remove('springback'); rb.el.classList.add('drag');
+        cancelLp(); unpress();
+        if (a && a.label) {
+          const r = rb.sc.getBoundingClientRect(), ar = app.getBoundingClientRect();
+          cue.innerHTML = a.label();
+          cue.style.top = (dir > 0 ? r.top - ar.top + 10 : r.bottom - ar.top - 44) + 'px';
+          cue.classList.remove('ready');
+        }
+      }
+      const raw = (t.clientY - rb.y0) * rb.dir;
+      rb.dy = Math.max(0, raw);
+      const a = rb.act && ACTS[rb.act];
+      const off = a && a.follow ? rb.dy : damp(rb.dy);
+      rb.el.style.transform = `translate3d(0,${rb.dir * off}px,0)`;
+      const need = a && a.follow ? 110 : 84;
+      const ready = !!a && rb.dy >= need;
+      if (ready !== rb.ready) { rb.ready = ready; if (ready && B.haptic) B.haptic('tick'); cue.classList.toggle('ready', ready); }
+      if (a && a.label) {
+        const k = Math.min(1, rb.dy / need);
+        cue.style.opacity = k;
+        cue.style.transform = `translate(-50%,${rb.dir * (off * 0.5 - 6 + 6 * k)}px) scale(${0.85 + 0.15 * k})`;
+      }
     }, { passive: true });
-    views.addEventListener('touchend', () => { if (pv) pv.list.classList.remove('pulling'); pv = null; }, { passive: true });
+    const rbEnd = () => {
+      if (!rb) return;
+      const g = rb; rb = null;
+      if (!g.on) return;
+      const a = g.act && ACTS[g.act];
+      const fast = a && a.follow && g.dy > 40 && g.dy / Math.max(1, performance.now() - g.t0) > 0.6;
+      const go = a && (g.ready || fast);
+      cue.style.opacity = 0; cue.style.transform = 'translate(-50%,0) scale(.85)';
+      const el = g.el;
+      el.classList.remove('drag');
+      if (go && a.follow) { el.style.transform = ''; a.run(); return; }
+      el.classList.add('springback'); el.style.transform = '';
+      setTimeout(() => el.classList.remove('springback'), 560);
+      if (go) { if (B.haptic) B.haptic('long'); setTimeout(a.run, g.act === 'all' ? 0 : 60); }
+    };
+    app.addEventListener('touchend', rbEnd, { passive: true });
+    app.addEventListener('touchcancel', rbEnd, { passive: true });
+
+    // Hold a space on the rail to lift it, drag it to a new spot, let go to drop it there. Hold and let go without moving: its options.
+    const rail = $('#rail');
+    function startSort(tile) {
+      const tiles = [...rail.querySelectorAll('.tile[data-long="space"]')].filter(x => x.dataset.id !== 'home' && x.dataset.id !== 'all');
+      const from = tiles.indexOf(tile);
+      if (from < 0) return false;
+      const rects = tiles.map(x => x.getBoundingClientRect());
+      S.drag = { tile, tiles, rects, from, to: from, y0: lp ? lp.y : rects[from].top, moved: false, step: tiles.length > 1 ? rects[1].top - rects[0].top : 58 };
+      rail.classList.add('sorting'); tile.classList.add('lifted');
+      tile.style.transform = 'scale(1.12)';
+      const ar = app.getBoundingClientRect(), hint = document.createElement('div');
+      hint.className = 'sort-hint'; hint.textContent = 'Drag to reorder';
+      hint.style.top = (rects[from].top - ar.top + 12) + 'px';
+      app.appendChild(hint); S.drag.hint = hint;
+      return true;
+    }
+    function moveSort(y) {
+      const g = S.drag, dy = y - g.y0;
+      if (Math.abs(dy) > 6 && !g.moved) { g.moved = true; if (g.hint) { g.hint.remove(); g.hint = null; } }
+      const lo = g.rects[0].top - g.rects[g.from].top, hi = g.rects[g.rects.length - 1].top - g.rects[g.from].top;
+      const off = Math.max(lo - 20, Math.min(hi + 20, dy));
+      g.tile.style.transform = `translate3d(0,${off}px,0) scale(1.12)`;
+      const to = Math.max(0, Math.min(g.tiles.length - 1, g.from + Math.round(off / g.step)));
+      if (to !== g.to) { g.to = to; if (B.haptic) B.haptic('tick'); }
+      g.tiles.forEach((x, i) => {
+        if (x === g.tile) return;
+        const shift = g.from < g.to && i > g.from && i <= g.to ? -g.step : g.to < g.from && i >= g.to && i < g.from ? g.step : 0;
+        x.style.transform = shift ? `translate3d(0,${shift}px,0)` : '';
+      });
+    }
+    function endSort(cancel) {
+      const g = S.drag; if (!g) return;
+      S.drag = null;
+      if (g.hint) g.hint.remove();
+      rail.classList.remove('sorting');
+      g.tiles.forEach(x => { x.style.transform = ''; });
+      g.tile.classList.remove('lifted');
+      const id = g.tile.dataset.id;
+      if (!g.moved) { renderRail(); if (!cancel) spaceSheet(id); return; }
+      if (g.to !== g.from) {
+        const [sp] = D.spaces.splice(g.from, 1); D.spaces.splice(g.to, 0, sp); save();
+        if (B.haptic) B.haptic('long');
+      }
+      renderRail();
+      const t = rail.querySelector(`.tile[data-id="${CSS.escape(id)}"]`);
+      if (t && motionOK()) t.classList.add('settle');
+      dragEnd = performance.now();
+    }
+    rail.addEventListener('touchmove', e => { if (S.drag && e.cancelable) e.preventDefault(); }, { passive: false });
+    app.addEventListener('pointermove', e => { if (S.drag) moveSort(e.clientY); });
+    app.addEventListener('pointerup', () => { if (S.drag) endSort(false); });
+    app.addEventListener('pointercancel', () => { if (S.drag) endSort(!S.drag.moved); });
+
+    // Pressing a row lights it up, the way a chat app does.
+    let pressed = null, pressT = 0;
+    const PRESS = '.chan,.convo,.nrow,.mrow,.ev,.row,.pp-row,.lk,.fav,.cmdrow';
+    function unpress() { clearTimeout(pressT); if (pressed) { pressed.classList.remove('press'); pressed = null; } }
+    app.addEventListener('pointerdown', e => {
+      unpress();
+      const t = e.target.closest(PRESS);
+      if (!t || e.target.closest('input,textarea')) return;
+      pressT = setTimeout(() => { pressed = t; t.classList.add('press'); }, e.pointerType === 'mouse' ? 0 : 45);
+      t._px = e.clientX; t._py = e.clientY;
+    });
+    app.addEventListener('pointermove', e => { if (pressed && Math.hypot(e.clientX - pressed._px, e.clientY - pressed._py) > 9) unpress(); });
+    app.addEventListener('pointerup', () => { clearTimeout(pressT); const p = pressed; pressed = null; if (p) setTimeout(() => p.classList.remove('press'), 140); });
+    app.addEventListener('pointercancel', unpress);
+    app.addEventListener('scroll', unpress, true);
+    app.addEventListener('scroll', () => { if (app.scrollTop || app.scrollLeft) { app.scrollTop = 0; app.scrollLeft = 0; } });
+
+    // Passport editor: typing goes into the draft
+    $('#overlay').addEventListener('input', e => {
+      const f = e.target.dataset && e.target.dataset.pp; if (!f || !S.ppDraft) return;
+      if (f === 'link') { const l = S.ppDraft.links[+e.target.dataset.i]; if (l) l.v = e.target.value; }
+      else S.ppDraft[f] = e.target.value;
+    });
 
     // Composer
     const input = ta();
@@ -2972,7 +3622,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
         case 'apps': loadApps(); refreshSoon(); break;
         case 'notifs': loadNotifs(Array.isArray(data) ? data : undefined); refreshSoon(); break;
         case 'media': S.media = data && data.title ? data : null; renderNow(); break;
-        case 'battery': S.battery = data || S.battery; if (S.tab === 'you') renderYou(); if (S.tab === 'home') renderList(); break;
+        case 'battery': S.battery = data || S.battery; if (S.you) renderYou(); if (S.tab === 'home') renderList(); break;
         case 'perms': S.perms = (data && typeof data === 'object') ? data : (B.perms() || {}); loadAll(); refreshSoon(); break;
         case 'events': S.events = arr(data); refreshSoon(); break;
         case 'remind': checkReminders(); break;

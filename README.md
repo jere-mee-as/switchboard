@@ -6,7 +6,7 @@ Switchboard is a separate Android launcher concept, unrelated to JRL Launcher's 
 
 | File | What |
 |---|---|
-| `index.html` | The page: v0.2. In a browser it runs on example data; in the app it runs on the phone through `window.SBNative` |
+| `index.html` | The page: v0.4. In a browser it runs on example data; in the app it runs on the phone through `window.SBNative` |
 | `android/` | The Android app (`ing.jere.switchboard`): its own HOME app, separate from JRL in every way. See its README |
 
 ## How to open
@@ -17,7 +17,7 @@ Release: Actions → **Release APK** → **Run workflow** builds the APK and pub
 
 ## Status
 
-Page v0.2, Android app 0.1.0 (first build; never run on a phone yet).
+Page v0.4, Android app 0.2.0. Gestures: pull down past the top of any list for #feed, pull up past the end of Home or a space for All apps, pull up past the newest message to go back, pull down on the rail for the notification shade. Hold a space and drag it to reorder.
 
 ## Docs
 
