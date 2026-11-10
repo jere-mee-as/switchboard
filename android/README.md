@@ -3,7 +3,7 @@
 Switchboard's home-screen app. Its own app in every way: package `ing.jere.switchboard`, label Switchboard, its own
 icon, bridge, workflow and signing secrets. It shares nothing with JRL Launcher.
 
-A thin Kotlin shell: one WebView running `switchboard/index.html` (copied into the APK's assets at build time, so
+A thin Kotlin shell: one WebView running the repo's `index.html` (copied into the APK's assets at build time, so
 there is one copy of the page), plus `window.SBNative` for the phone. The WebView sits inside the system bars; the
 strips behind the bars take the colour the page painted, so every skin (auto, dark, black, light) looks right.
 
@@ -25,11 +25,13 @@ app/src/main/java/ing/jere/switchboard/
 
 ## Build
 
-GitHub → Actions → **Switchboard APK** → Run workflow (manual only). Download the `switchboard-apk` artifact.
+Actions → **Release APK** → **Run workflow** (`.github/workflows/release.yml`; the button is the only trigger). It
+publishes release `v<versionName>` with `switchboard.apk`; running it again for the same version replaces the APK.
+The newest is always at `releases/latest/download/switchboard.apk`.
 
-Signing uses its own secrets: `SB_KEYSTORE_B64`, `SB_KEYSTORE_PASSWORD`, `SB_KEY_ALIAS`, `SB_KEY_PASSWORD`. Without
-them the APK is debug-signed: fine to try, but each CI run then has a new key, so the next build needs an uninstall
-first. Android Studio: open this folder, Build → Build APK(s).
+Signing secrets: `SB_KEYSTORE_B64`, `SB_KEYSTORE_PASSWORD`, `SB_KEY_ALIAS`, `SB_KEY_PASSWORD`. Without them the APK
+is debug-signed: fine to try, but each run then has a new key, so the next build needs an uninstall first.
+Android Studio: open this folder, Build → Build APK(s).
 
 ## Install
 

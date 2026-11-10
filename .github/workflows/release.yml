@@ -1,0 +1,79 @@
+# Builds the Switchboard APK and publishes it as a GitHub Release. Runs only when you press the button:
+# Actions > Release APK > Run workflow. Never on push or on a schedule.
+#
+# The release is tagged v<versionName> from android/app/build.gradle.kts. Running it again for the same
+# version replaces that release's APK. Newest release, always:
+#   https://github.com/jere-mee-as/switchboard/releases/latest/download/switchboard.apk
+#
+# Signing secrets (Settings > Secrets and variables > Actions): SB_KEYSTORE_B64 (base64 of the .jks),
+# SB_KEYSTORE_PASSWORD, SB_KEY_ALIAS, SB_KEY_PASSWORD. Without them the APK is debug-signed, and each
+# build then has a different key (uninstall before installing the next one).
+name: Release APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle.kts
+            android/gradle/libs.versions.toml
+            android/gradle/wrapper/gradle-wrapper.properties
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Decode keystore
+        env:
+          SB_KEYSTORE_B64: ${{ secrets.SB_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$SB_KEYSTORE_B64" ]; then
+            ks="$RUNNER_TEMP/release.jks"
+            echo "$SB_KEYSTORE_B64" | base64 --decode > "$ks"
+            echo "SB_KEYSTORE_PATH=$ks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::SB_KEYSTORE_B64 is not set; the APK will be debug-signed."
+          fi
+
+      - name: Build release APK
+        env:
+          SB_KEYSTORE_PASSWORD: ${{ secrets.SB_KEYSTORE_PASSWORD }}
+          SB_KEY_ALIAS: ${{ secrets.SB_KEY_ALIAS }}
+          SB_KEY_PASSWORD: ${{ secrets.SB_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          cp "$(ls app/build/outputs/apk/release/*.apk | head -n1)" "$RUNNER_TEMP/switchboard.apk"
+          notes="Switchboard $ver (built from ${GITHUB_SHA::7}).
+
+          Install on Android: download switchboard.apk on the phone, open it and allow the install. Then Settings > Apps > Switchboard > ⋮ > Allow restricted settings, before turning on notification access. Set it as the home app in Settings > Apps > Choose default apps > Home app."
+          if gh release view "v$ver" >/dev/null 2>&1; then
+            gh release upload "v$ver" "$RUNNER_TEMP/switchboard.apk" --clobber
+            gh release edit "v$ver" --notes "$notes" --latest
+          else
+            gh release create "v$ver" "$RUNNER_TEMP/switchboard.apk" --target "$GITHUB_SHA" --title "Switchboard $ver" --notes "$notes" --latest
+          fi

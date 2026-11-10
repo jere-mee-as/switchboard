@@ -1,4 +1,6 @@
-# switchboard
+# Switchboard
+
+**Install:** on the phone, download [`switchboard.apk`](https://github.com/jere-mee-as/switchboard/releases/latest/download/switchboard.apk) from the [latest release](https://github.com/jere-mee-as/switchboard/releases/latest), open it, and allow the install. Then Settings → Apps → Switchboard → ⋮ → **Allow restricted settings**, and set it as the home app. Try it without a phone: [jere.ing/#lab](https://jere.ing/#lab).
 
 Switchboard is a separate Android launcher concept, unrelated to JRL Launcher's look: the home screen is laid out like a chat app (Discord-like), with spaces and channels instead of pages and folders. Apps, notifications, events and contacts appear as messages and members.
 
@@ -11,7 +13,7 @@ Switchboard is a separate Android launcher concept, unrelated to JRL Launcher's 
 
 Open `index.html` in a browser. Fonts load from Google Fonts. All data is example data; nothing is read from a phone.
 
-APK: GitHub → Actions → **Switchboard APK** → Run workflow, then download the `switchboard-apk` artifact. The build copies `index.html` into the app, so this file is the only copy of the page.
+Release: Actions → **Release APK** → **Run workflow** builds the APK and publishes it as release `v<versionName>` (the button is the only trigger). The build copies `index.html` into the app, so this file is the only copy of the page.
 
 ## Status
 

@@ -1,0 +1,11 @@
+# Android build output and signing: never committed
+*.jks
+*.keystore
+*.apk
+*.aab
+local.properties
+.gradle/
+build/
+.idea/
+*.iml
+.DS_Store
