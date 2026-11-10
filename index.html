@@ -1721,7 +1721,8 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       head = spaceHead(homeTitle(), new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + bat, D.fun.header === 'clock' ? 'clock' : '');
       body += upNext();
       const pins = pinnedApps();
-      body += cat('home:pinned', 'Pinned', pins.map(appRow), pins.length);
+      // Pinned apps keep the order you give them: hold one and drag it.
+      body += cat('home:pinned', 'Pinned', pins.map(a => { const r = appRow(a); r.h = r.h.replace('data-long="app"', 'data-long="app" data-reorder="home"'); return r; }), pins.length);
       if (!pins.length) body += '<div class="empty-note">Long-press any app and choose Pin, or type <b>/pin</b> in #feed.</div>';
       const fresh = D.fresh.map(appOf).filter(a => a && !isHidden(a.key));
       if (fresh.length) body += cat('home:new', 'New apps', fresh.map(appRow), fresh.length);
@@ -1742,7 +1743,6 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       body += cat(sp.id + ':text', 'Text', [activityRow(sp.id)]);
       const custom = sp.sort === 'custom';
       body += cat(sp.id + ':apps', custom ? 'Apps · your order' : 'Apps', apps.map(a => { const r = appRow(a); if (custom) r.h = r.h.replace('data-long="app"', `data-long="app" data-reorder="${esc(sp.id)}"`); return r; }), apps.length);
-      body += `<button class="chan add" data-act="ov" data-v="edit-space" data-id="${esc(sp.id)}"><span class="hash">${ic('plus', 'sm')}</span><span class="cl">Add or remove apps</span></button>`;
       body += pullHint();
     }
     el.innerHTML = head + `<div class="chan-clip"><div class="chan-scroll">${body}</div></div>`;
@@ -2981,7 +2981,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
   function spaceSheet(id) {
     if (id === 'home') {
       openSheet(`<div class="sh-head"><span class="tile home">${ic('panel')}</span><div class="tt"><b>Home</b><small>Up next, pinned apps, #notes</small></div></div><div class="group">` +
-        row('data-act="ov" data-v="edit-space" data-id="home"', ic('pin'), 'Choose pinned apps') +
+        row('data-act="ov" data-v="edit-space" data-id="home"', ic('pin'), 'Choose pinned apps', 'To reorder, hold a pinned app and drag it') +
         row('data-act="mark-read"', ic('checks'), 'Mark everything as read') +
         row('data-act="ov" data-v="spaces"', ic('layers'), 'Manage spaces') +
         row('data-act="ov" data-v="appearance"', ic('sliders'), 'Rail and appearance') + '</div>', 'space');
@@ -3680,12 +3680,14 @@ if (typeof module !== 'undefined') module.exports = SBQR;
         box = rail;
         drop = (from, to) => { const [sp] = D.spaces.splice(from, 1); D.spaces.splice(to, 0, sp); };
       } else {
-        const sp = spaceOf(item.dataset.reorder); if (!sp) return false;
+        const id = item.dataset.reorder, sp = id === 'home' ? null : spaceOf(id);
+        if (id !== 'home' && !sp) return false;
         box = item.closest('.chan-scroll');
-        items = [...box.querySelectorAll(`[data-reorder="${CSS.escape(sp.id)}"]`)];
+        items = [...box.querySelectorAll(`[data-reorder="${CSS.escape(id)}"]`)];
         drop = (from, to) => {
           const keys = items.map(x => x.dataset.key), [k] = keys.splice(from, 1); keys.splice(to, 0, k);
-          sp.apps = keys.concat(sp.apps.filter(x => !keys.includes(x)));   // hidden apps keep their place at the end
+          const list = sp ? sp.apps : D.pinned, rest = list.filter(x => !keys.includes(x));   // hidden apps keep their place at the end
+          if (sp) sp.apps = keys.concat(rest); else D.pinned = keys.concat(rest);
         };
       }
       const from = items.indexOf(item);
