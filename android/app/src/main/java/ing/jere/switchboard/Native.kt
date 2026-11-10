@@ -579,6 +579,36 @@ class Native(private val act: MainActivity) {
         }
     }
 
+    // ---------------------------------------------------------------- updates (see Updater)
+
+    /** The page calls this once it has started; a downloaded page that never does is rolled back. */
+    @JavascriptInterface
+    fun ready() = act.runOnUiThread { act.markAlive() }
+
+    /** {app, live, pageAt, pageSha, onLive} */
+    @JavascriptInterface
+    fun updateInfo(): String = Updater.info(act).put("onLive", act.onLivePage()).toString()
+
+    /** what: app | page. Results arrive as 'update' events. */
+    @JavascriptInterface
+    fun checkUpdate(what: String) {
+        if (what == "page") Updater.checkPage(act, quiet = false) else Updater.checkApp(act)
+    }
+
+    @JavascriptInterface
+    fun installUpdate() = Updater.installApp(act)
+
+    /** Shows the newest downloaded page now. */
+    @JavascriptInterface
+    fun applyPage() = act.loadPage()
+
+    /** Goes back to the page built into the app. */
+    @JavascriptInterface
+    fun resetPage() {
+        Updater.dropLive(act)
+        act.loadPage()
+    }
+
     @JavascriptInterface
     fun version(): String = try {
         pm.getPackageInfo(act.packageName, 0).versionName ?: "?"

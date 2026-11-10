@@ -35,6 +35,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
+import java.io.File
 import java.lang.ref.WeakReference
 
 /**
@@ -50,6 +51,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var native: Native
 
     private var pageReady = false
+    /** The page said hello (SBNative.ready()). A downloaded page that never does is thrown away. */
+    @Volatile private var pageAlive = false
+    private var onLive = false
+    private var rolledBack = false
+    @Volatile var pendingPage = false
     private var resumed = false
     private var lastMedia = ""
     private var lastBattery = ""
@@ -113,6 +119,7 @@ class MainActivity : ComponentActivity() {
             .setDomain(HOST)
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .addPathHandler("/icon/", IconHandler(this))
+            .addPathHandler("/live/", WebViewAssetLoader.InternalStoragePathHandler(this, File(filesDir, "live")))
             .build()
 
         val bg = getColor(R.color.bg)
@@ -169,7 +176,7 @@ class MainActivity : ComponentActivity() {
         launcherApps.registerCallback(appsCallback)
         Notifs.onChange = notifsChanged
         Reminders.channel(this)
-        web.loadUrl(START)
+        loadPage()
         handleReminderIntent(intent)
     }
 
@@ -193,7 +200,8 @@ class MainActivity : ComponentActivity() {
         ContextCompat.registerReceiver(
             this, batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED,
         )
-        emit("resume")
+        if (pendingPage) { pendingPage = false; loadPage() } else emit("resume")
+        Updater.autoCheck(this) { pendingPage = true }
         main.removeCallbacks(pulse)
         main.post(pulse)
     }
@@ -215,6 +223,37 @@ class MainActivity : ComponentActivity() {
         web.destroy()
         super.onDestroy()
     }
+
+    /** Loads the newest page we trust: a downloaded one if present, else the one built into the APK. */
+    fun loadPage() {
+        runOnUiThread {
+            pageReady = false
+            pageAlive = false
+            onLive = Updater.useLive(this)
+            web.loadUrl(if (onLive) LIVE else START)
+            if (onLive) main.postDelayed(watchdog, Updater.READY_MS)
+        }
+    }
+
+    /** A downloaded page that doesn't start in time is deleted, and the built-in page comes back. */
+    private val watchdog = Runnable {
+        if (onLive && !pageAlive) {
+            Updater.dropLive(this)
+            rolledBack = true
+            loadPage()
+        }
+    }
+
+    fun markAlive() {
+        pageAlive = true
+        main.removeCallbacks(watchdog)
+        if (rolledBack) {
+            rolledBack = false
+            emit("update", jsString("{\"kind\":\"page\",\"state\":\"rolled-back\"}"))
+        }
+    }
+
+    fun onLivePage() = onLive
 
     private fun appsChanged() {
         native.invalidateApps()
@@ -315,6 +354,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val HOST = "appassets.androidplatform.net"
         const val START = "https://$HOST/assets/www/index.html"
+        const val LIVE = "https://$HOST/live/index.html"
 
         /** What the page looks for: window.SBNative. */
         const val JS_NAME = "SBNative"

@@ -1017,7 +1017,20 @@ window.SBMock = window.SBNative ? null : (() => {
     copy: t => { try { navigator.clipboard.writeText(t); } catch (e) {} return true; },
     haptic: () => {},
     setHome: () => say('Preview: opens the default home app picker'),
-    version: () => '0.4-preview'
+    version: () => '0.4-preview',
+    ready: () => true,
+    updateInfo: () => ({ app: '0.4-preview', live: false, onLive: false, pageAt: 0, pageSha: '' }),
+    checkUpdate: what => {
+      const ev = (st, x = {}) => setTimeout(() => window.SB && SB.onNative('update', JSON.stringify(Object.assign({ kind: what, state: st }, x))), 0);
+      setTimeout(() => what === 'page' ? ev('current') : ev('available', { version: '0.5.0', from: '0.4-preview', size: 4.2e6 }), 700);
+    },
+    installUpdate: () => {
+      let p = 0;
+      const t = setInterval(() => { p += 20; SB.onNative('update', JSON.stringify({ kind: 'app', state: 'downloading', pct: Math.min(p, 100), version: '0.5.0' }));
+        if (p >= 100) { clearInterval(t); setTimeout(() => SB.onNative('update', JSON.stringify({ kind: 'app', state: 'confirm' })), 400); } }, 300);
+    },
+    applyPage: () => say('Preview: reloads the newest page'),
+    resetPage: () => say('Preview: back to the built-in page')
   };
 })();
 
@@ -1897,8 +1910,9 @@ if (typeof module !== 'undefined') module.exports = SBQR;
         row('data-act="ov" data-v="appearance"', ic('contrast'), 'Appearance', 'Theme, density, rail, banner', `<span class="rv">${esc(D.skin === 'auto' ? 'Auto' : D.skin[0].toUpperCase() + D.skin.slice(1))}</span>`) +
         row('data-act="ov" data-v="spaces"', ic('layers'), 'Spaces', 'Order, names, which apps go where', `<span class="rv">${arr(D.spaces).length}</span>`) +
         row('data-act="ov" data-v="hidden"', ic('eye-off'), 'Hidden apps', '', `<span class="rv">${D.hidden.length}</span>`) +
+        row('data-act="b" data-a="upd-check" data-v=""', ic('down'), 'Check for updates', 'Same as /update in #feed', ic('chev-r', 'sm')) +
         (p.isHome ? '' : row('data-act="set-home"', ic('home'), 'Make Switchboard your home screen', 'Choose it in the home app picker', ic('chev-r', 'sm'))) +
-        `</div><div class="foot">${ic('jack', 'xs')}Switchboard <code>${esc(B.version() || '')}</code></div>`;
+        `</div><div class="foot">${ic('jack', 'xs')}Switchboard <code>${esc(B.version() || '')}</code>${(B.updateInfo() || {}).onLive ? ' · page from GitHub' : ''}</div>`;
     }
     h += '</div>';
     body.innerHTML = h;
@@ -2559,6 +2573,11 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     sys('sliders', `Opened <b>${esc(k === 'main' ? 'Settings' : k)}</b>`);
   }, { icon: 'sliders', group: 'Phone', wait: true, sug: r => opts('Settings', 'sliders', ['wifi', 'bluetooth', 'display', 'sound', 'battery', 'apps', 'home'], r, x => ({ fill: '/settings ' + x, submit: true })) });
   def('shade', '', 'Pull down notifications', () => B.shade(), { icon: 'bell', group: 'Phone' });
+  def('update', '[app · page · reset]', 'Get the newest Switchboard from GitHub', r => {
+    const k = norm(r);
+    if (k === 'reset') { op('Going back to the page built into the app…'); return setTimeout(() => B.resetPage(), 400); }
+    startUpdate(k === 'page' ? 'page' : 'app', k === 'app');
+  }, { icon: 'down', group: 'Launcher', sug: r => opts('Update', 'down', ['app', 'page', 'reset'], r, x => ({ fill: '/update ' + x, submit: true })) });
   def('battery', '', 'Battery level', () => {
     const b = B.battery() || S.battery || {}; S.battery = b;
     op('', { embed: { icon: 'battery', k: 'Battery', t: (b.pct != null ? b.pct : '–') + '%', rows: [['State', b.charging ? 'Charging' : 'On battery']] } });
@@ -2663,6 +2682,52 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     const p = D.passport;
     op(p.status || '', { embed: { icon: 'user', k: 'Passport', t: p.name, rows: [p.phone && ['Phone', p.phone], p.email && ['Email', p.email]].filter(Boolean).concat(arr(p.links).map(l => [linkName(l), linkShow(l)])) }, btns: [btn('Show code', 'qr', '', 'pri'), btn('Open profile', 'you', '')] });
   }, { hidden: true });
+
+  /* ---------- updates ---------- */
+  // One Operator card in #feed that changes as the update moves along (checking → downloading → install).
+  function updCard(embed, btns) {
+    const L = D.logs['home:feed'] || (D.logs['home:feed'] = []);
+    let m = S.updId && L.find(x => x.id === S.updId);
+    if (!m) { log('home:feed', { who: 'op', text: '', embed, btns }); S.updId = L[L.length - 1].id; return; }
+    m.embed = embed; m.btns = btns; save();
+    if (S.ch === 'home:feed' && S.co && chatVisible()) renderMsgs(S.co, true);
+  }
+  function startUpdate(what, appOnly) {
+    S.updId = null; S.updAppOnly = !!appOnly;
+    if (!chatVisible() || S.ch !== 'home:feed') openChannel('home:feed');
+    updCard({ icon: 'down', k: 'Update', t: 'Checking GitHub…', lines: [what === 'page' ? 'Looking for a newer page.' : 'Looking for a newer version of the app, then the page.'] });
+    B.checkUpdate(what);
+  }
+  const UPD_ROWS = () => { const i = B.updateInfo() || {}; return [['App', i.app || B.version() || '?'], ['Page', i.onLive ? 'from GitHub' + (i.pageAt ? ', ' + stamp(i.pageAt) : '') : 'built in']]; };
+  function onUpdate(u) {
+    if (!u || !u.kind) return;
+    const P = u.kind === 'page', E = (t, lines, extra = {}) => Object.assign({ icon: 'down', k: P ? 'Page update' : 'App update', t, lines: lines || [] }, extra);
+    switch (u.state) {
+      case 'checking': return updCard(E('Checking GitHub…'));
+      case 'available': return updCard(E(`Switchboard ${u.version} is out`, ['Android asks you to confirm the install. Your spaces, passport and settings stay.'], { rows: [['You have', u.from], ['Size', u.size ? (u.size / 1e6).toFixed(1) + ' MB' : '–']] }),
+        [btn('Download and install', 'upd-install', '', 'pri'), btn('Not now', 'upd-dismiss', '')]);
+      case 'current':
+        if (!P && !S.updAppOnly) { updCard(E('App is up to date', ['Checking the page next…'])); return B.checkUpdate('page'); }
+        return updCard(E("You're up to date", [], { rows: UPD_ROWS() }));
+      case 'downloading': return updCard(E(u.pct >= 0 ? `Downloading ${u.pct}%` : 'Downloading…', [`Switchboard ${u.version || ''}`]));
+      case 'installing': return updCard(E('Opening the installer…'));
+      case 'confirm': return updCard(E('Tap Install on the Android screen', ['Switchboard closes for a moment while it updates, then comes right back.']));
+      case 'done': return updCard(E('Installed', ['Switchboard is restarting on the new version.']));
+      case 'canceled': return updCard(E('Install canceled', []), [btn('Try again', 'upd-install', '', 'pri')]);
+      case 'busy': return toast('Already downloading');
+      case 'needs-permission': return updCard(E('One-time permission', ['Android opened a screen: turn on “Allow from this source” for Switchboard, come back, and tap Try again.']), [btn('Try again', 'upd-install', '', 'pri')]);
+      case 'ready': return updCard(E('New page downloaded', ['Switch now, or it switches by itself next time you come home.']), [btn('Switch now', 'upd-apply', '', 'pri')]);
+      case 'rolled-back': log('home:feed', { who: 'op', text: "The newest page from GitHub didn't start, so I went back to the one built into the app. Nothing was lost." }); return;
+      case 'error': return updCard(E(u.code === 'key' ? 'Needs one reinstall' : "Couldn't update", [u.msg || 'Something went wrong.']), u.code === 'key' ? [btn('Open releases', 'url', 'https://github.com/jere-mee-as/switchboard/releases/latest', 'pri')] : [btn('Try again', 'cmd', '/update', '')]);
+    }
+  }
+  // After a page update applies (on its own or from Switch now), say so once.
+  function noteNewPage() {
+    const i = B.updateInfo() || {}, sha = i.onLive ? i.pageSha : 'built-in:' + (i.app || B.version());
+    const was = store.get('pageSha', null);
+    store.set('pageSha', sha);
+    if (was && was !== sha) setTimeout(() => toast(i.onLive ? 'Switchboard updated' : `Switchboard ${i.app || ''} is ready`), 900);
+  }
 
   function helpHtml() {
     const groups = new Map();
@@ -3151,6 +3216,11 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     cebar: () => { if (!D.mate) return; D.mate.n = Math.min(MATE_MAX, D.mate.n + 1); updateMate(); },
     yerba: () => { if (!D.mate) return; D.mate.n = 0; updateMate(); },
     qr: () => { S.qrIdx = -1; qrSheet(); },
+    'upd-install': () => B.installUpdate(),
+    'upd-check': () => { closeYou(); startUpdate('app'); },
+    'upd-apply': () => { toast('Switching…'); setTimeout(() => B.applyPage(), 250); },
+    'upd-dismiss': () => updCard({ icon: 'down', k: 'App update', t: 'Later, then', lines: ['Run /update whenever you want it.'] }),
+    url: u => B.url(u),
     you: () => openYou('passport')
   };
   const ACT = {
@@ -3626,6 +3696,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
         case 'perms': S.perms = (data && typeof data === 'object') ? data : (B.perms() || {}); loadAll(); refreshSoon(); break;
         case 'events': S.events = arr(data); refreshSoon(); break;
         case 'remind': checkReminders(); break;
+        case 'update': onUpdate(data); break;
         case 'resume': loadAll(); maybeBrief(); checkReminders(); refreshSoon(); break;
       }
     }
@@ -3646,6 +3717,8 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     if (!S.wide) setPos('list');
     renderAll();
     setInterval(() => { if (document.hidden) return; checkReminders(); renderTabs(); if (S.tab === 'home') renderList(); else renderPage(); }, 30000);
+    if (B.ready) B.ready();   // tells the app this page started fine (a downloaded page that doesn't is rolled back)
+    noteNewPage();
   }
   init();
 })();
