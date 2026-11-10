@@ -160,11 +160,19 @@ class Native(private val act: MainActivity) {
         val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)
             ?: meta.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST) ?: ""
         val art = artwork(meta, mc.packageName + "|" + title + "|" + artist)
+        val ps = mc.playbackState
         return JSONObject()
             .put("pkg", mc.packageName)
             .put("title", title)
             .put("artist", artist)
-            .put("playing", mc.playbackState?.state == PlaybackState.STATE_PLAYING)
+            .put("album", meta.getString(MediaMetadata.METADATA_KEY_ALBUM) ?: "")
+            .put("duration", meta.getLong(MediaMetadata.METADATA_KEY_DURATION))
+            .put("position", ps?.position ?: -1L)
+            // wall-clock time the position was measured, so the page can run the clock forward (stable between polls)
+            .put("positionAt", if (ps != null && ps.lastPositionUpdateTime > 0) (System.currentTimeMillis() - (android.os.SystemClock.elapsedRealtime() - ps.lastPositionUpdateTime)) / 500 * 500 else 0L)
+            .put("speed", ps?.playbackSpeed?.toDouble() ?: 1.0)
+            .put("canSeek", ps != null && (ps.actions and PlaybackState.ACTION_SEEK_TO) != 0L)
+            .put("playing", ps?.state == PlaybackState.STATE_PLAYING)
             .put("art", if (art.isEmpty()) JSONObject.NULL else art)
             .toString()
     }
@@ -207,11 +215,12 @@ class Native(private val act: MainActivity) {
             try {
                 val mc = controller() ?: return@ui
                 val t = mc.transportControls
-                when (cmd) {
-                    "play" -> t.play()
-                    "pause" -> t.pause()
-                    "next" -> t.skipToNext()
-                    "prev" -> t.skipToPrevious()
+                when {
+                    cmd.startsWith("seek:") -> cmd.removePrefix("seek:").toLongOrNull()?.let { t.seekTo(it) }
+                    cmd == "play" -> t.play()
+                    cmd == "pause" -> t.pause()
+                    cmd == "next" -> t.skipToNext()
+                    cmd == "prev" -> t.skipToPrevious()
                     else -> if (mc.playbackState?.state == PlaybackState.STATE_PLAYING) t.pause() else t.play()
                 }
             } catch (e: Exception) {
@@ -640,7 +649,7 @@ class Native(private val act: MainActivity) {
         const val HOUR_MS = 3_600_000L
         const val DAY_MS = 86_400_000L
         const val MAX_EVENTS = 60
-        const val ART_PX = 240
+        const val ART_PX = 720   // big enough for the full-screen player
 
         // Contacts column names (stable provider API values; spelled out to keep the queries readable).
         const val COL_CONTACT_ID = "contact_id"

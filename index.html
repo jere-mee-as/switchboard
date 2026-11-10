@@ -698,6 +698,60 @@ img{max-width:100%}
 .qr-btns{display:flex;gap:8px;padding:0 12px}
 .qr-btns .btn{flex:1;justify-content:center;height:44px;border-radius:12px}
 .qr-note{text-align:center;font-size:12px;color:var(--ink-3);padding:10px 16px 4px}
+.player{position:absolute;inset:0;z-index:43;--pl:var(--brass);color:#fff;background:#0b0a09;overflow:hidden;
+  transform:translate3d(0,104%,0);visibility:hidden;transition:transform .32s var(--glide),visibility 0s linear .32s}
+.player.on{transform:none;visibility:visible;transition:transform .55s var(--spring),visibility 0s}
+.player.drag{transition:none!important}
+.pl-bg{position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 20%,color-mix(in srgb,var(--pl) 70%,#000),#060505 85%);transition:background .8s}
+.pl-bg img{position:absolute;inset:-20%;width:140%;height:140%;object-fit:cover;filter:blur(48px) saturate(1.5) brightness(.65);opacity:.85;animation:plDrift 24s ease-in-out infinite alternate}
+@keyframes plDrift{to{transform:scale(1.15) rotate(6deg)}}
+.pl-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.55) 75%)}
+.pl-body{position:relative;height:100%;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;padding:8px 22px calc(18px + env(safe-area-inset-bottom,0px))}
+.pl-top{display:flex;align-items:center;gap:8px;flex:none}
+.pl-top .icon-btn{color:#fff;background:rgba(255,255,255,.1)}
+.pl-from{flex:1;text-align:center;line-height:1.2}
+.pl-from small{display:block;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;opacity:.65}
+.pl-from b{font-size:14px}
+.pl-stage{flex:1;min-height:0;display:grid;place-items:center;padding:18px 0}
+.pl-art{width:min(100%,46vh,420px);aspect-ratio:1;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.08);
+  box-shadow:0 30px 60px -12px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06),0 20px 80px -20px var(--pl);
+  transform:scale(.84);transition:transform .6s var(--spring),box-shadow .6s;touch-action:pan-y}
+.player.playing .pl-art{transform:none}
+.player.playing .pl-art:not(.drag):not(.springback){animation:plBreathe 6s ease-in-out infinite}
+@keyframes plBreathe{50%{transform:scale(1.015)}}
+.pl-art.drag{transition:none;animation:none}
+.pl-art img{width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none}
+.pl-art.swap img{animation:plIn .5s var(--spring)}
+.pl-art.swap.back img{animation-name:plInBack}
+@keyframes plIn{from{transform:translateX(40%) scale(.9);opacity:0}}
+@keyframes plInBack{from{transform:translateX(-40%) scale(.9);opacity:0}}
+.pl-noart{width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(135deg,var(--pl),#222)}
+.pl-noart .i{width:30%;height:30%;color:rgba(255,255,255,.8)}
+.pl-meta{flex:none;min-width:0}
+.pl-t b{display:block;font:700 24px/1.2 var(--font-ui);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-t span{display:block;font-size:15.5px;opacity:.72;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-t.swap{animation:msgIn .45s var(--spring)}
+.pl-prog{flex:none;margin-top:18px;min-height:30px}
+.pl-bar{position:relative;height:5px;border-radius:3px;background:rgba(255,255,255,.22);touch-action:none;padding:0;cursor:pointer}
+.pl-prog.seek .pl-bar::before{content:"";position:absolute;inset:-14px 0}
+.pl-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:#fff;transition:width .5s linear}
+.pl-bar em{position:absolute;top:50%;width:13px;height:13px;margin:-6.5px 0 0 -6.5px;border-radius:50%;background:#fff;opacity:0;transform:scale(.4);transition:opacity .15s,transform .2s var(--spring),left .5s linear}
+.pl-prog.seek .pl-bar em{opacity:1;transform:scale(.7)}
+.pl-prog.active .pl-bar{height:7px;margin-top:-1px}
+.pl-prog.active .pl-bar i,.pl-prog.active .pl-bar em{transition:none}
+.pl-prog.active .pl-bar em{transform:scale(1.3)}
+.pl-times{display:flex;justify-content:space-between;font:600 12px/1 var(--font-ui);opacity:.65;margin-top:9px;font-variant-numeric:tabular-nums}
+.pl-ctrl{flex:none;display:flex;align-items:center;justify-content:center;gap:34px;margin:14px 0 16px}
+.pl-ctrl .icon-btn{width:56px;height:56px;color:#fff}
+.pl-ctrl .icon-btn .i{width:32px;height:32px}
+.pl-ctrl .icon-btn:active{background:rgba(255,255,255,.1);transform:scale(.9)}
+.pl-play{width:76px;height:76px;border-radius:50%;background:#fff;color:#111;display:grid;place-items:center;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:transform .25s var(--spring)}
+.pl-play .i{width:34px;height:34px}
+.pl-play:active{transform:scale(.9)}
+.pl-open{flex:none;align-self:center;display:flex;align-items:center;gap:8px;height:40px;padding:0 16px 0 10px;border-radius:20px;background:rgba(255,255,255,.12);font:600 13.5px/1 var(--font-ui)}
+.pl-open img{width:22px;height:22px;border-radius:var(--icon-r)}
+.app.wide .player{left:50%;right:auto;width:min(560px,100%);transform:translate3d(-50%,104%,0)}
+.app.wide .player.on{transform:translate3d(-50%,0,0)}
 .findbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:8px;margin:8px 12px 4px;padding:0 12px;height:44px;border-radius:12px;
   background:var(--field);color:var(--ink-3);box-shadow:0 6px 14px -8px rgba(0,0,0,.5)}
 .findbar input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;color:var(--ink);font:16px var(--font-ui)}
@@ -881,7 +935,7 @@ img{max-width:100%}
   <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/></symbol>
   <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2"/><path d="M4 7l8 6 8-6"/></symbol>
  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
-  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8l1.6 2.4 2.8-.7.7 2.8 2.4 1.6-1.3 2.6 1.3 2.6-2.4 1.6-.7 2.8-2.8-.7L12 21.2l-1.6-2.4-2.8.7-.7-2.8-2.4-1.6 1.3-2.6-1.3-2.6 2.4-1.6.7-2.8 2.8.7z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
   <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.3a9.5 9.5 0 0 1 13 0M8.6 15.5a5 5 0 0 1 6.8 0"/><path d="M12 19h.01" stroke-width="2.8"/></symbol>
   <symbol id="i-bt" viewBox="0 0 24 24"><path d="M7 7.5l10 9-5 4.5V3l5 4.5-10 9"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
@@ -938,6 +992,7 @@ img{max-width:100%}
     <div class="you-body" id="youBody"></div>
     <nav class="you-dock" id="youDock" aria-label="Shortcuts"></nav>
   </section>
+  <section class="player" id="player" role="dialog" aria-modal="true" aria-label="Now playing"></section>
   <div class="pullcue" id="pullcue" aria-hidden="true"></div>
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Options">
     <button class="grab" data-act="close-sheet" aria-label="Close"></button>
@@ -1012,8 +1067,14 @@ window.SBMock = window.SBNative ? null : (() => {
     { id: 'c3', name: 'Lucas', phone: '+1 555 010 0133' }, { id: 'c4', name: 'Marco (site)', phone: '+1 555 010 0177' },
     { id: 'c5', name: 'Valen', phone: '+1 555 010 0190' }, { id: 'c6', name: 'Office', phone: '+1 555 010 0100' }
   ];
-  let media = { pkg: 'com.spotify.music', title: 'Glass Hallway', artist: 'Low Season', playing: true, art: null };
-  const queue = [['Glass Hallway', 'Low Season'], ['Signal Fires', 'The Overpass'], ['Patch Bay', 'Mira Ostend'], ['Late Line', 'Low Season']];
+  // Made-up covers for the preview: a gradient and a few shapes, drawn as SVG.
+  const cover = (a, b, c, k) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="300" height="300" fill="url(#g)"/>` +
+    (k === 0 ? `<circle cx="150" cy="150" r="90" fill="none" stroke="${c}" stroke-width="14"/><circle cx="150" cy="150" r="40" fill="${c}"/>` : k === 1 ? `<path d="M0 210 L80 120 L140 180 L210 90 L300 200 V300 H0Z" fill="${c}" opacity=".85"/><circle cx="230" cy="70" r="26" fill="#fff" opacity=".8"/>` : k === 2 ? `<g fill="${c}">${[0, 1, 2, 3, 4].map(i => `<rect x="${40 + i * 46}" y="${60 + (i % 2) * 40}" width="28" height="${180 - (i % 2) * 40}" rx="14"/>`).join('')}</g>` : `<rect x="60" y="60" width="180" height="180" fill="none" stroke="${c}" stroke-width="10" transform="rotate(12 150 150)"/><rect x="95" y="95" width="110" height="110" fill="${c}" transform="rotate(-8 150 150)"/>`) + '</svg>');
+  const queue = [['Glass Hallway', 'Low Season', 'Night Office', cover('#2b3a67', '#e46f4b', '#f6d38a', 0), 214000], ['Signal Fires', 'The Overpass', 'Overpass', cover('#0f4c4a', '#93c47d', '#f3f0d7', 1), 187000],
+    ['Patch Bay', 'Mira Ostend', 'Patch Bay', cover('#3a1f4f', '#c86fc9', '#ffe7a0', 2), 243000], ['Late Line', 'Low Season', 'Night Office', cover('#1d1d1d', '#d9a441', '#f2efe9', 3), 199000]];
+  const track = i => ({ title: queue[i][0], artist: queue[i][1], album: queue[i][2], art: queue[i][3], duration: queue[i][4] });
+  let media = Object.assign({ pkg: 'com.spotify.music', playing: true, position: 63000, positionAt: Date.now(), speed: 1, canSeek: true }, track(0));
+  const mpos = () => media.position + (media.playing ? Date.now() - media.positionAt : 0);
   let qi = 0, dnd = false, nid = 100;
   const label = pkg => (apps.find(a => a.pkg === pkg) || {}).label || pkg;
   const push = () => setTimeout(() => window.SB && SB.onNative('notifs', JSON.stringify(notifs)), 0);
@@ -1039,10 +1100,12 @@ window.SBMock = window.SBNative ? null : (() => {
     media: () => media,
     mediaCmd: cmd => {
       if (!media) return;
+      media.position = Math.min(media.duration, mpos()); media.positionAt = Date.now();
       if (cmd === 'toggle') media.playing = !media.playing;
       if (cmd === 'play') media.playing = true;
       if (cmd === 'pause') media.playing = false;
-      if (cmd === 'next' || cmd === 'prev') { qi = (qi + (cmd === 'next' ? 1 : queue.length - 1)) % queue.length; media.title = queue[qi][0]; media.artist = queue[qi][1]; media.playing = true; }
+      if (cmd.startsWith('seek:')) media.position = +cmd.slice(5) || 0;
+      if (cmd === 'next' || cmd === 'prev') { qi = (qi + (cmd === 'next' ? 1 : queue.length - 1)) % queue.length; Object.assign(media, track(qi), { playing: true, position: 0 }); }
       setTimeout(() => window.SB && SB.onNative('media', JSON.stringify(media)), 0);
     },
     events: () => events,
@@ -2018,11 +2081,113 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     if (!m) { el.hidden = true; return; }
     const a = appPkg(m.pkg);
     el.hidden = false;
-    el.innerHTML = `<button class="art" data-act="media-open" aria-label="Open ${esc(a ? a.label : 'player')}">${m.art ? `<img src="${esc(m.art)}" alt="">` : ic('speaker', 'sm')}</button>` +
-      `<button class="meta" data-act="media-open"><div class="t">${esc(m.title)}</div><div class="s">${m.playing ? '<span class="on-air">Playing</span>' : 'Paused'}<span>· ${esc(m.artist || (a ? a.label : ''))}</span></div></button>` +
+    el.innerHTML = `<button class="art" data-act="player" aria-label="Open the player">${m.art ? `<img src="${esc(m.art)}" alt="">` : ic('speaker', 'sm')}</button>` +
+      `<button class="meta" data-act="player" aria-label="Open the player"><div class="t">${esc(m.title)}</div><div class="s">${m.playing ? '<span class="on-air">Playing</span>' : 'Paused'}<span>· ${esc(m.artist || (a ? a.label : ''))}</span></div></button>` +
       `<button class="icon-btn" data-act="media" data-cmd="prev" aria-label="Previous">${ic('prev')}</button>` +
       `<button class="icon-btn" data-act="media" data-cmd="toggle" aria-label="${m.playing ? 'Pause' : 'Play'}">${ic(m.playing ? 'pause' : 'play')}</button>` +
       `<button class="icon-btn" data-act="media" data-cmd="next" aria-label="Next">${ic('next')}</button>`;
+  }
+
+  /* ---------- the player: big album art ---------- */
+  const mmss = ms => { const t = Math.max(0, Math.round(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+  const mediaPos = m => (m.position >= 0 ? Math.min(m.duration || Infinity, m.position + (m.playing && m.positionAt ? (now() - m.positionAt) * (m.speed || 1) : 0)) : -1);
+  // The cover's average colour tints the whole player.
+  function artTint(src, cb) {
+    if (!src) return cb(null);
+    if (S.tintFor === src) return cb(S.tint);
+    const im = new Image();
+    im.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 12;
+        const x = c.getContext('2d'); x.drawImage(im, 0, 0, 12, 12);
+        const d = x.getImageData(0, 0, 12, 12).data; let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4) { const sat = Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]), w = 1 + sat / 40; r += d[i] * w; g += d[i + 1] * w; b += d[i + 2] * w; n += w; }
+        S.tintFor = src; S.tint = [r / n, g / n, b / n].map(Math.round); cb(S.tint);
+      } catch (e) { cb(null); }
+    };
+    im.onerror = () => cb(null);
+    im.src = src;
+  }
+  function openPlayer() {
+    if (!S.media) return;
+    closeSheet(); hidePicker();
+    S.player = true; S.playerKey = null;
+    renderPlayer();
+    $('#player').classList.add('on'); $('#scrim').classList.add('on');
+    clearInterval(S.plTick); S.plTick = setInterval(tickPlayer, 500);
+    if (B.haptic) B.haptic('tick');
+  }
+  function closePlayer() {
+    if (!S.player) return;
+    S.player = false; clearInterval(S.plTick);
+    const p = $('#player'); p.classList.remove('on', 'drag'); p.style.transform = '';
+    if (!S.sheet && !S.you) $('#scrim').classList.remove('on');
+  }
+  function renderPlayer() {
+    const el = $('#player'), m = S.media;
+    if (!m) return closePlayer();
+    const a = appPkg(m.pkg), key = m.title + '|' + m.artist, changed = S.playerKey && S.playerKey !== key;
+    const dir = S.plDir || 1; S.plDir = 0;
+    const pos = mediaPos(m), dur = m.duration > 0 ? m.duration : 0;
+    el.classList.toggle('playing', !!m.playing);
+    el.innerHTML = `<div class="pl-bg">${m.art ? `<img src="${esc(m.art)}" alt="">` : ''}</div>` +
+      `<div class="pl-body"><div class="pl-top"><button class="icon-btn" data-act="player-close" aria-label="Close">${ic('chev')}</button>` +
+      `<div class="pl-from"><small>Playing from</small><b>${esc(a ? a.label : 'your music')}</b></div>` +
+      `<button class="icon-btn" data-act="media-open" aria-label="Open the app">${ic('open')}</button></div>` +
+      `<div class="pl-stage"><button class="pl-art ${changed ? 'swap' + (dir < 0 ? ' back' : '') : ''}" data-act="media" data-cmd="toggle" aria-label="${m.playing ? 'Pause' : 'Play'}">` +
+        (m.art ? `<img src="${esc(m.art)}" alt="Album art" draggable="false">` : `<span class="pl-noart">${ic('music')}</span>`) + `</button></div>` +
+      `<div class="pl-meta"><div class="pl-t ${changed ? 'swap' : ''}"><b>${esc(m.title)}</b><span>${esc(m.artist || '')}${m.album && m.album !== m.title ? ' · ' + esc(m.album) : ''}</span></div></div>` +
+      (dur ? `<div class="pl-prog ${m.canSeek ? 'seek' : ''}"><div class="pl-bar"><i style="width:${Math.min(100, Math.max(0, pos / dur * 100)).toFixed(2)}%"></i><em style="left:${Math.min(100, Math.max(0, pos / dur * 100)).toFixed(2)}%"></em></div><div class="pl-times"><span>${mmss(pos)}</span><span>-${mmss(dur - pos)}</span></div></div>` : '<div class="pl-prog empty"></div>') +
+      `<div class="pl-ctrl"><button class="icon-btn" data-act="pl-skip" data-cmd="prev" aria-label="Previous">${ic('prev')}</button>` +
+      `<button class="pl-play" data-act="media" data-cmd="toggle" aria-label="${m.playing ? 'Pause' : 'Play'}">${ic(m.playing ? 'pause' : 'play')}</button>` +
+      `<button class="icon-btn" data-act="pl-skip" data-cmd="next" aria-label="Next">${ic('next')}</button></div>` +
+      `<button class="pl-open" data-act="media-open">${a ? `<img src="${esc(a.icon)}" alt="">` : ic('open', 'sm')}Open ${esc(a ? a.label : 'the app')}</button></div>`;
+    S.playerKey = key;
+    artTint(m.art, t => { el.style.setProperty('--pl', t ? `rgb(${t.join(',')})` : 'var(--brass)'); });
+    wirePlayer(el, m);
+  }
+  function tickPlayer() {
+    const m = S.media, el = $('#player'); if (!m || !S.player || !m.duration) return;
+    if (S.plSeeking) return;
+    const pos = mediaPos(m), f = Math.min(100, Math.max(0, pos / m.duration * 100)).toFixed(2) + '%';
+    const i = el.querySelector('.pl-bar i'), e = el.querySelector('.pl-bar em'), ts = el.querySelectorAll('.pl-times span');
+    if (i) i.style.width = f; if (e) e.style.left = f;
+    if (ts.length === 2) { ts[0].textContent = mmss(pos); ts[1].textContent = '-' + mmss(m.duration - pos); }
+  }
+  function wirePlayer(el, m) {
+    // Drag along the bar to seek.
+    const bar = el.querySelector('.pl-prog.seek .pl-bar');
+    if (bar) {
+      const at = x => { const r = bar.getBoundingClientRect(); return Math.min(1, Math.max(0, (x - r.left) / r.width)); };
+      const show = f => { bar.querySelector('i').style.width = f * 100 + '%'; bar.querySelector('em').style.left = f * 100 + '%'; const ts = el.querySelectorAll('.pl-times span'); ts[0].textContent = mmss(f * m.duration); ts[1].textContent = '-' + mmss((1 - f) * m.duration); };
+      bar.addEventListener('pointerdown', e => { e.stopPropagation(); S.plSeeking = true; bar.setPointerCapture(e.pointerId); bar.parentElement.classList.add('active'); show(at(e.clientX)); });
+      bar.addEventListener('pointermove', e => { if (S.plSeeking) show(at(e.clientX)); });
+      const done = e => {
+        if (!S.plSeeking) return; S.plSeeking = false; bar.parentElement.classList.remove('active');
+        const ms = Math.round(at(e.clientX) * m.duration); m.position = ms; m.positionAt = now();
+        B.mediaCmd('seek:' + ms); if (B.haptic) B.haptic('tick');
+      };
+      bar.addEventListener('pointerup', done); bar.addEventListener('pointercancel', () => { S.plSeeking = false; bar.parentElement.classList.remove('active'); });
+    }
+    // Swipe the cover sideways for the next or previous track.
+    const art = el.querySelector('.pl-art'); if (!art) return;
+    let g = null;
+    art.addEventListener('pointerdown', e => { g = { x: e.clientX, y: e.clientY, id: e.pointerId, on: false }; });
+    art.addEventListener('pointermove', e => {
+      if (!g || e.pointerId !== g.id) return;
+      const dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if (!g.on) { if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) { g.on = true; art.classList.add('drag'); try { art.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ } } else if (Math.abs(dy) > 12) { g = null; return; } else return; }
+      g.dx = dx; art.style.transform = `translate3d(${dx / Z()}px,0,0) rotate(${dx / 40}deg)`;
+    });
+    const end = () => {
+      if (!g) return; const k = g; g = null; art.classList.remove('drag');
+      if (!k.on) return;
+      art._swiped = performance.now();
+      if (Math.abs(k.dx) > 70) { S.plDir = k.dx < 0 ? 1 : -1; art.style.transform = `translate3d(${k.dx < 0 ? -120 : 120}%,0,0) rotate(${k.dx < 0 ? -8 : 8}deg)`; art.style.opacity = '0'; B.mediaCmd(k.dx < 0 ? 'next' : 'prev'); if (B.haptic) B.haptic('tick'); }
+      else { art.classList.add('springback'); art.style.transform = ''; setTimeout(() => art.classList.remove('springback'), 560); }
+    };
+    art.addEventListener('pointerup', end); art.addEventListener('pointercancel', end);
+    art.addEventListener('click', e => { if (performance.now() - (art._swiped || 0) < 400) { e.stopPropagation(); e.preventDefault(); } }, true);
   }
 
   /* ---------- pages ---------- */
@@ -2481,6 +2646,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
   function back() {
     if (S.cropping) return S.cropping();
     if (S.sheet) return closeSheet();
+    if (S.player) return closePlayer();
     if (!$('#picker').hidden) return hidePicker();
     if (S.ov) return closeOverlay();
     if (S.you) return closeYou();
@@ -3547,14 +3713,15 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       else launchApp(a);
     },
     cat: t => { const id = t.dataset.id; D.collapsed[id] = !D.collapsed[id]; save(); renderList(); },
-    'media-open': () => { const a = S.media && appPkg(S.media.pkg); if (a) launchApp(a); },
+    'media-open': () => { const a = S.media && appPkg(S.media.pkg); if (a) { closePlayer(); launchApp(a); } },
+    player: () => openPlayer(),
     media: t => B.mediaCmd(t.dataset.cmd),
     tab: t => setTab(t.dataset.t),
     'to-list': () => setPos('list'),
     'to-people': () => setPos('people'),
     quick: () => quickSheet(),
     slash: () => { const v = ta().value; if (!v) setInput('/'); else if (v === '/') setInput(''); ta().focus({ preventScroll: true }); updatePicker(); },
-    'close-sheet': () => { if (S.sheet) closeSheet(); else closeYou(); },
+    'close-sheet': () => { if (S.sheet) closeSheet(); else if (S.player) closePlayer(); else closeYou(); },
     'you-close': () => closeYou(),
     'you-tab': t => { S.youTab = t.dataset.v; renderYou(); },
     'pp-link': t => {
@@ -3619,6 +3786,8 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     },
     'sp-rename': t => renameSheet(t.dataset.id),
     'pic-menu': t => picSheet(t.dataset.v),
+    'player-close': () => closePlayer(),
+    'pl-skip': t => { S.plDir = t.dataset.cmd === 'next' ? 1 : -1; B.mediaCmd(t.dataset.cmd); },
     'backup': () => { closeSheet(); doBackup(); },
     'restore': () => restoreSheet(),
     'restore-file': () => { closeSheet(); restorePick(); },
@@ -3800,7 +3969,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       setTimeout(() => clearNotif(id), 440);
     }
     function swStart(x, y, target, id) {
-      if (S.wide || S.sheet || S.ov || S.you || S.drag) return;
+      if (S.wide || S.sheet || S.ov || S.you || S.player || S.drag) return;
       if (target.closest('textarea,input,.picker,.favs,.seg,.nowbar,.tabs,.az')) return;
       let zone = null;
       if (target.closest('#chat') || (S.pos === 'people' && target.closest('#people'))) zone = 'chat';
@@ -3885,11 +4054,13 @@ if (typeof module !== 'undefined') module.exports = SBQR;
       up: { dir: -1, label: () => `${ic('home', 'xs')}Back to the list`, run: () => closeChatUp() },
       shade: { dir: 1, label: () => `${ic('bell', 'xs')}Notifications`, run: () => B.shade() },
       sheet: { dir: 1, follow: '#sheet', run: () => closeSheet() },
-      you: { dir: 1, follow: '#you', run: () => closeYou() }
+      you: { dir: 1, follow: '#you', run: () => closeYou() },
+      player: { dir: 1, follow: '#player', run: () => closePlayer() }
     };
     function actFor(sc, dir) {
       if (sc.matches('.sheet-body')) return dir > 0 ? 'sheet' : null;
       if (sc.matches('.you-body')) return dir > 0 ? 'you' : null;
+      if (sc.matches('.pl-body')) return dir > 0 ? 'player' : null;
       if (sc.matches('.rail')) return dir > 0 ? 'shade' : null;
       if (sc.matches('#msgs')) return dir < 0 && !S.wide && S.pos === 'chat' ? 'up' : null;
       // #feed only drops in from Home and the spaces. In All apps, pulling past the top goes back Home.
@@ -3904,7 +4075,8 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     app.addEventListener('touchstart', e => {
       rb = null;
       if (e.touches.length !== 1 || S.drag || S.azBusy || e.target.closest('textarea,input,.az,.picker,.favs,.qrpick')) return;
-      const sc = e.target.closest('.chan-scroll,.page,.ov-body,#msgs,.sheet-body,.you-body,.rail');
+      if (e.target.closest('.pl-bar')) return;
+      const sc = e.target.closest('.chan-scroll,.page,.ov-body,#msgs,.sheet-body,.you-body,.pl-body,.rail');
       if (!sc || (sc.matches('#msgs') && !chatVisible())) return;
       if (sc.matches('.you-body') && e.target.closest('.you-dock')) return;
       const t = e.touches[0];
@@ -4109,7 +4281,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
         case 'home': goHome(); break;
         case 'apps': loadApps(); refreshSoon(); break;
         case 'notifs': loadNotifs(Array.isArray(data) ? data : undefined); refreshSoon(); break;
-        case 'media': S.media = data && data.title ? data : null; renderNow(); break;
+        case 'media': S.media = data && data.title ? data : null; renderNow(); if (S.player) renderPlayer(); break;
         case 'battery': S.battery = data || S.battery; if (S.you) renderYou(); if (S.tab === 'home') renderList(); break;
         case 'perms': S.perms = (data && typeof data === 'object') ? data : (B.perms() || {}); loadAll(); refreshSoon(); break;
         case 'events': S.events = arr(data); refreshSoon(); break;
