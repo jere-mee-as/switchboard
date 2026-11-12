@@ -3,7 +3,7 @@
      tap the bar        type to your phone: apps, people, .commands, sums, the web
      swipe sideways     next space; Home is in the middle: Recent (apps, settings, files) to its left, spaces to its right
      pull up            everything waiting, people first; reply right from the bar
-     pull down          every app, A–Z (pull down from the date at the top for the notification shade)
+     pull down          every app, A–Z (pull down from the date at the top: what's waiting, dropped in from above)
      tap the cover      the album-art player
      hold an app        options; hold and drag to reorder
    Unfolded, what's waiting sits beside home.
@@ -707,6 +707,7 @@
   function openSheet(kind, html, o = {}) {
     if (S.finding) exitFind();
     const sh = $('#sheet');
+    if (kind !== 'waiting' && sh.classList.contains('from-top')) { sh.classList.add('drag'); sh.classList.remove('from-top'); void sh.offsetWidth; sh.classList.remove('drag'); }
     S.sheet = kind;
     sh.classList.toggle('above-bar', !!o.aboveBar);
     $('#app').classList.toggle('bar-up', !!o.aboveBar);
@@ -729,8 +730,8 @@
 
   /* waiting: people first, then everything else, then what your phone is holding for you */
   function waitingHtml(inSide) {
-    let h = inSide ? '' : head('Waiting', waitingCount() ? '<button class="bt ghost" data-act="clear-all">Clear all</button>' : '');
-    if (inSide) h += `<div class="sh-title"><h2>Waiting</h2>${waitingCount() ? '<button class="bt ghost" data-act="clear-all">Clear all</button>' : ''}</div>`;
+    const right = `<button class="bt ghost" data-act="shade" aria-label="Phone notification shade">${ic('bell', 'sm')}Phone</button>` + (waitingCount() ? '<button class="bt ghost" data-act="clear-all">Clear all</button>' : '');
+    let h = head('Waiting', right);
     if (S.perms.notif === false) h += `<div class="perm"><b>See everything that comes in</b>Switchboard needs notification access to show messages here and reply to them.<div class="btns"><button class="bt pri" data-act="perm" data-v="notif">Allow access</button></div></div>`;
     const cs = convos(), os = others();
     if (cs.length) {
@@ -772,9 +773,12 @@
     }
     return h;
   }
-  function openWaiting() {
-    if (S.wide) return;
+  function openWaiting(fromTop) {
+    if (S.wide) { $('#sideBody').scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    const sh = $('#sheet');
+    if (fromTop) { sh.classList.add('from-top', 'drag'); sh.classList.remove('on'); void sh.offsetWidth; sh.classList.remove('drag'); }
     openSheet('waiting', waitingHtml(), { aboveBar: true });
+    if (fromTop) buzz();
   }
   function renderSide() {
     if (!S.wide) return;
@@ -983,6 +987,7 @@
     'reply-cancel': () => { S.reply = null; q().value = ''; q().blur(); renderBar(); },
     'cv-done': v => { for (const n of S.notifs) if (n.live && convoKey(n) === v) B.notifDismiss(n.id); delete S.sent[v]; },
     'ag-done': v => { for (const n of S.notifs) if (n.live && n.pkg === v && !isConvo(n)) B.notifDismiss(n.id); },
+    shade: () => { closeSheet(); B.shade(); },
     'clear-all': () => { B.dismissAll(); S.sent = {}; toast('Cleared'); },
     earlier: () => { S.showEarlier = !S.showEarlier; refreshWaiting(); },
     sms: v => { B.sms(v, ''); exitFind(); },
@@ -1092,7 +1097,7 @@
       } else if (k.ax === 'up' && !S.wide) {
         if (-dy > 70 || vy < -0.5) settleWaiting(true); else settleWaiting(false);
       } else if (k.ax === 'down') {
-        if (dy > 60 || vy > 0.5) { if (el.id === 'top') B.shade(); else openDrawer(); }
+        if (dy > 60 || vy > 0.5) { if (el.id === 'top') openWaiting(true); else openDrawer(); }
       }
     };
     el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
@@ -1119,7 +1124,7 @@
     const sh = $('#sheet');
     if (S.sheet !== 'waiting-peek') {
       S.sheet = 'waiting-peek';
-      sh.classList.add('above-bar', 'drag'); sh.classList.remove('on'); $('#app').classList.add('bar-up');
+      sh.classList.add('above-bar', 'drag'); sh.classList.remove('on', 'from-top'); $('#app').classList.add('bar-up');
       $('#sheetBody').innerHTML = waitingHtml(); $('#sheetBody').scrollTop = 0;
     }
     const h = sh.offsetHeight + 30;
@@ -1137,14 +1142,16 @@
     el.addEventListener('touchstart', e => {
       const sc = scroller(); const t = e.touches[0];
       if (e.target.closest('#azstrip, .pl-bar, .pl-art, input, select')) { g = null; return; }
-      g = { y: t.clientY, x: t.clientX, top: !sc || sc.scrollTop <= 0, on: false, t: performance.now() };
+      const grab = !!e.target.closest('.sh-grab, .sh-title');
+      g = { y: t.clientY, x: t.clientX, grab, atBottom: grab, top: grab || el.classList.contains('from-top') || !sc || sc.scrollTop <= 0, on: false, t: performance.now() };
     }, { passive: true });
     el.addEventListener('touchmove', e => {
       if (!g || !g.top) return;
-      const t = e.touches[0], dy = t.clientY - g.y;
+      const up = el.classList.contains('from-top'), t = e.touches[0], dy = (t.clientY - g.y) * (up ? -1 : 1);
+      if (up && !g.atBottom) { const sc = scroller(); g.atBottom = !sc || sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 2; if (!g.atBottom) { g = null; return; } }
       if (!g.on) { if (dy > 8 && dy > Math.abs(t.clientX - g.x)) { g.on = true; el.classList.add('drag'); } else if (dy < -4 || Math.abs(t.clientX - g.x) > 10) { g = null; return; } else return; }
       e.preventDefault();
-      el.style.transform = `translate3d(0,${Math.max(0, dy)}px,0)`;
+      el.style.transform = `translate3d(0,${Math.max(0, dy) * (up ? -1 : 1)}px,0)`;
       g.dy = dy;
     }, { passive: false });
     const end = () => {
