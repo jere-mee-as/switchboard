@@ -755,6 +755,8 @@
   function applyWall() {
     const w = wallNow(), el = $('#wall'), app = $('#app');
     app.classList.toggle('has-wall', !!w);
+    // Text drawn straight on the wallpaper follows the wallpaper, whatever the theme (sheets and the bar keep the theme).
+    app.classList.toggle('wall-light', !!w && !w.dark); app.classList.toggle('wall-dark', !!w && !!w.dark);
     $('#wallVeil').style.opacity = w ? String((D.wall.dim || 0) / 100) : '0';
     const key = w ? w.id + '|' + (w.css || '') : '';
     if (key !== wallShown) {

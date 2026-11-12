@@ -438,12 +438,25 @@ img{display:block}
 /* over a wallpaper: dots and text that hold up on any picture */
 .app.has-wall #dots .dts i{background:color-mix(in srgb,var(--ink) 30%,transparent)}
 .app.has-wall #dots .dts i.on{background:var(--brass)}
-.app.has-wall #top,.app.has-wall .glance,.app.has-wall #dots{text-shadow:0 1px 10px color-mix(in srgb,var(--bg) 85%,transparent),0 0 2px color-mix(in srgb,var(--bg) 60%,transparent)}
+/* on the wallpaper itself: ink chosen by how light the wallpaper is, not by the theme */
+.app.wall-light :is(#top,.glance,#dots,.page .g-empty,.page .tile .lbl){--ink:#1a1917;--ink-2:#2b2825;--ink-3:#3d3935;--brass-text:color-mix(in srgb,var(--brass) 38%,#000);
+  text-shadow:0 1px 10px rgba(255,255,255,.7),0 0 2px rgba(255,255,255,.55)}
+.app.wall-dark :is(#top,.glance,#dots,.page .g-empty,.page .tile .lbl){--ink:#f4efe8;--ink-2:#e2dbd1;--ink-3:#cbc3b8;--brass-text:color-mix(in srgb,var(--brass) 70%,#fff);
+  text-shadow:0 1px 10px rgba(0,0,0,.6),0 0 2px rgba(0,0,0,.45)}
+.app.wall-light :is(.glance) .g-row,.app.wall-light .glance .g-quiet{border-top-color:rgba(0,0,0,.14)}
+.app.wall-dark :is(.glance) .g-row,.app.wall-dark .glance .g-quiet{border-top-color:rgba(255,255,255,.16)}
+#top,.glance,#dots{color:var(--ink)}
+.app.wall-light #dots .dts i{background:rgba(0,0,0,.28)} .app.wall-dark #dots .dts i{background:rgba(255,255,255,.35)}
+.app.has-wall #dots .dts i.on{background:var(--brass)}
 
 /* readable text colours: the accent as text is darkened on light backgrounds, more so over a wallpaper;
    greys get stronger over a wallpaper, where the background varies */
 .app{--brass-text:color-mix(in srgb,var(--brass) var(--bt-mix),#000)}
 .app.has-wall{--brass-text:color-mix(in srgb,var(--brass) var(--bt-mix-wall),#000);--ink-2:var(--ink-2w);--ink-3:var(--ink-3w)}
+.app.wall-light .glance .qt:not(.on){background:rgba(255,255,255,.62)}
+.app.wall-dark .glance .qt:not(.on){background:rgba(18,17,16,.5)}
+.app.has-wall .glance .qt{text-shadow:none}
+.app.has-wall .glance .qt.on{--ink:var(--brass-ink);color:var(--brass-ink)}
 .pl-grab{position:absolute;top:8px;left:50%;width:40px;height:5px;margin-left:-20px;border-radius:3px;background:rgba(255,255,255,.45);z-index:2}
 .pl-body>:not(.pl-stage){opacity:0;transition:opacity .15s}
 .player.on .pl-body>:not(.pl-stage){opacity:1;transition:opacity .35s .12s}
@@ -2001,6 +2014,8 @@ window.SB_WALL_THUMBS = {"dawn-clear": "data:image/webp;base64,UklGRt4AAABXRUJQV
   function applyWall() {
     const w = wallNow(), el = $('#wall'), app = $('#app');
     app.classList.toggle('has-wall', !!w);
+    // Text drawn straight on the wallpaper follows the wallpaper, whatever the theme (sheets and the bar keep the theme).
+    app.classList.toggle('wall-light', !!w && !w.dark); app.classList.toggle('wall-dark', !!w && !!w.dark);
     $('#wallVeil').style.opacity = w ? String((D.wall.dim || 0) / 100) : '0';
     const key = w ? w.id + '|' + (w.css || '') : '';
     if (key !== wallShown) {

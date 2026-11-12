@@ -7,7 +7,7 @@ const fs = require('fs'); const OUTDIR = require('path').resolve(__dirname, 'con
   const results = [];
   const states = [];
   for (const skin of ['dark', 'light', 'black']) for (const v of ['home', 'recent', 'drawer', 'waiting', 'you', 'wall', 'answer', 'find', 'agenda', 'spaces', 'help', 'cmds']) states.push({ skin, v, wall: null });
-  for (const wall of ['dawn clear', 'day clear', 'day storm', 'dusk clear', 'dusk storm', 'night clear', 'night rain']) for (const v of ['home', 'recent', 'answer', 'drawer', 'spaces']) states.push({ skin: 'auto', v, wall });
+  for (const skin of ['auto', 'dark', 'black', 'light']) for (const wall of ['dawn clear', 'day clear', 'day storm', 'dusk clear', 'dusk storm', 'night clear', 'night rain']) for (const v of ['home', 'recent', 'answer', 'drawer', 'spaces']) states.push({ skin, v, wall });
   const ctx = await b.newContext({ viewport: { width: 412, height: 810 }, isMobile: true, hasTouch: true, colorScheme: 'dark', deviceScaleFactor: 1 });
   const p = await ctx.newPage();
   for (const st of states) {
