@@ -99,6 +99,17 @@ img{display:block}
 .g-row .gt b{font-weight:600;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .g-row .gt span{font-size:13.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .g-title{font-size:22px;line-height:28px;font-weight:600;padding:2px 0 10px}
+.g-title-row{display:flex;align-items:baseline;justify-content:space-between}
+.g-clear{height:36px;padding:0 4px;font-size:13px;font-weight:400;color:var(--ink-3)}
+.quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.qt{min-height:56px;border-radius:16px;background:var(--raise);display:flex;align-items:center;gap:12px;padding:8px 14px;color:var(--ink);text-align:left;min-width:0}
+.qt .i{color:var(--ink-2)}
+.qt span{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.qt b{font-weight:500;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qt small{font-size:12px;color:var(--ink-3)}
+.qt.on{background:var(--brass);color:var(--brass-ink)}
+.qt.on .i,.qt.on small{color:var(--brass-ink)}
+.qt:active{transform:scale(.97)}
 .g-quiet{border-top:1px solid var(--line);padding:12px 0;font-size:14px;color:var(--ink-3)}
 .g-more{font-size:13px;color:var(--link);padding:8px 0}
 .page .fill{flex:1 1 0;min-height:8px}
@@ -125,6 +136,12 @@ img{display:block}
 #dots .dts i{width:6px;height:6px;border-radius:50%;background:var(--line);transition:background .2s,transform .2s}
 #dots .dts i.on{background:var(--brass);transform:scale(1.25)}
 #dots .dts i.lit{box-shadow:0 0 0 2px var(--lamp-glow)}
+#dots{transition:background .2s;border-radius:22px;margin:0 12px;touch-action:none}
+#dots.scrub{background:var(--raise)}
+#dots.scrub .dts{gap:14px}
+#dots.scrub .dts i{transform:scale(1.5)}
+#dots.scrub .dts i.on{transform:scale(2.1)}
+#dots.scrub #spacename{color:var(--brass);font-weight:600}
 
 /* ---------- the bar ---------- */
 #barwrap{flex:none;position:relative;padding:4px 20px 18px;z-index:30}
@@ -133,7 +150,7 @@ img{display:block}
 .finding #bar,.replying #bar{box-shadow:0 0 0 2px var(--brass) inset}
 #cover{width:48px;height:48px;border-radius:50%;flex:none;overflow:hidden;background:var(--field);position:relative}
 #cover img{width:100%;height:100%;object-fit:cover}
-#slash{width:40px;height:48px;flex:none;display:grid;place-items:center;font:600 18px var(--font-mono);color:var(--brass)}
+#slash{width:40px;height:48px;flex:none;display:grid;place-items:center;color:var(--brass)}
 #replyChip{flex:none;height:40px;display:flex;align-items:center;gap:6px;padding:0 6px 0 12px;border-radius:20px;background:var(--sel);font-size:14px;max-width:46%}
 #replyChip b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #replyChip button{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;color:var(--ink-2)}

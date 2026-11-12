@@ -24,10 +24,10 @@ const arity = JSON.parse(fs.readFileSync('' + __dirname + '/arity.json', 'utf8')
   p.on('console', m => { if (/bridge|arity|bad arg/.test(m.text())) bad.push(m.text()); });
   await p.goto('file://' + process.argv[2] + ''); await p.waitForTimeout(600);
   const typeRun = async t => { await p.tap('#q'); await p.fill('#q', t); await p.dispatchEvent('#q', 'input'); await p.keyboard.press('Enter'); await p.waitForTimeout(150); };
-  for (const t of ['/timer 10m', '/alarm 6:30am wake', '/remind 20m call Marco', '/reminders', '/event Dinner fri 7pm', '/note test note', '/calc 2*21', '/flash', '/flash off', '/dnd on', '/dnd off',
-    '/settings wifi', '/shade', '/battery', '/pin Reddit', '/unpin Reddit', '/move Reddit to Work', '/space new Travel', '/space rename Travel to Trips', '/space delete Trips', '/hide Uber', '/unhide Uber',
-    '/mute Venmo', '/unmute Venmo', '/info Chrome', '/uninstall Shazam', '/roll 2d20', '/flip', '/8ball will it pass', '/mate', '/theme light', '/theme auto', '/accent mint', '/accent brass',
-    '/name Jeremias', '/status testing', '/call Lucas', '/text Lucas hey', '/open spotify', '/search tacos', '/map reston', '/update', '/clear', '/whoami', '/nope', 'hola', 'spotify', '3+4', 'zzqx']) {
+  for (const t of ['.timer 10m', '/alarm 6:30am wake', '.remind 20m call Marco', '.reminders', '.event Dinner fri 7pm', '.note test note', '.calc 2*21', '.flash', '.flash off', '.dnd on', '.dnd off',
+    '.settings wifi', '.shade', '.battery', '.pin Reddit', '.unpin Reddit', '.move Reddit to Work', '.space new Travel', '.space rename Travel to Trips', '.space delete Trips', '.hide Uber', '.unhide Uber',
+    '.mute Venmo', '.unmute Venmo', '.info Chrome', '.uninstall Shazam', '.roll 2d20', '.flip', '.8ball will it pass', '.mate', '.theme light', '.theme auto', '.accent mint', '.accent brass',
+    '.name Jeremias', '.status testing', '.call Lucas', '.text Lucas hey', '.open spotify', '.search tacos', '.map reston', '.update', '.clear', '.whoami', '/nope', 'hola', 'spotify', '3+4', 'zzqx']) {
     await typeRun(t); await p.evaluate(() => SB.onNative('back')); await p.evaluate(() => SB.onNative('back'));
   }
   await p.waitForTimeout(1200);  // update flow events

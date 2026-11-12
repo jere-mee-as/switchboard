@@ -17,9 +17,14 @@ def cut(start, end, inclusive_end=False):
 
 
 sprite = cut('<svg width="0" height="0" style="position:absolute" aria-hidden="true">', '</svg>', True)
+# One bar adds a Bluetooth icon
+sprite = sprite.replace('</svg>', '<symbol id="i-bluetooth" viewBox="0 0 24 24"><path d="M7 7l10 10-5 4V3l5 4L7 17"/></symbol></svg>')
 mock = cut('<script>\n/* Preview bridge', '</script>', True)
 mock = mock.replace("copy: t => { try { navigator.clipboard.writeText(t); } catch (e) {} return true; },", "copy: t => { try { navigator.clipboard.writeText(t).catch(() => {}); } catch (e) {} return true; },")
 assert 'writeText(t).catch' in mock
+# the preview phone also has a files app
+mock = mock.replace("['Settings', 'com.android.settings', 'other']", "['Settings', 'com.android.settings', 'other'], ['My Files', 'com.sec.android.app.myfiles', 'other']")
+assert 'myfiles' in mock
 qr = cut('<script>\n/* Small QR encoder', '</script>', True)
 util = cut('  /* ---------- utilities ---------- */', '  /* ---------- bridge ---------- */')
 spaces = cut('  /* ---------- spaces ---------- */', '  /* ---------- model ---------- */')

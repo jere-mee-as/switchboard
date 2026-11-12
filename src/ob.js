@@ -1,14 +1,14 @@
 /* Switchboard · One bar (page v1.0)
    One still screen: today, sixteen apps, the bar.
-     tap the bar        type to your phone: apps, people, /commands, sums, the web
-     swipe sideways     next space (Home is page one; each space is a page)
+     tap the bar        type to your phone: apps, people, .commands, sums, the web
+     swipe sideways     next space; Home is in the middle: Recent (apps, settings, files) to its left, spaces to its right
      pull up            everything waiting, people first; reply right from the bar
      pull down          the notification shade
      tap the cover      the album-art player
      hold an app        options; hold and drag to reorder
    Unfolded, what's waiting sits beside home.
    Talks to the same phone bridge as v0.4 (window.SBNative) and keeps the same saved data (sb.data),
-   so spaces, pins, passport, notes and reminders carry over, and /update reset still goes back. */
+   so spaces, pins, passport, notes and reminders carry over, and .update reset still goes back. */
 (() => {
   'use strict';
 
@@ -55,11 +55,13 @@
   const S = {
     apps: [], byKey: new Map(), byPkg: new Map(), notifs: [], media: null, events: [], contacts: [],
     battery: null, device: null, perms: {}, torch: false,
-    page: store.get('obPage', 0), wide: false, sheet: null, finding: false, pool: null, reply: null, player: false,
+    page: store.get('obPage2', 1), wide: false, sheet: null, finding: false, pool: null, reply: null, player: false,
     results: [], sent: {}, showEarlier: false, answerId: null
   };
   const isConvo = n => n.kind === 'msg' || n.kind === 'call';
   const bot = () => D.fun.bot || 'Operator';
+  // Commands start with a period (a slash still works, for old habits and old buttons).
+  const isCmd = t => /^[./](?=[a-z8]|\s|$)/i.test(t);
 
 /*@@SPACES@@*/
 
@@ -76,8 +78,10 @@
   const pinnedApps = () => arr(D.pinned).map(appOf).filter(a => a && !isHidden(a.key));
   const muted = p => D.muted.includes(p);
   const live = () => S.notifs.filter(n => n.live && !muted(n.pkg));
+  const HOME_I = 1;   // Recent is page 0, Home page 1, then the spaces
+  const recentApps = () => D.recent.map(appOf).filter(a => a && !isHidden(a.key)).slice(0, 16);
   function pages() {
-    return [{ id: 'home', name: 'Home', apps: pinnedApps() }]
+    return [{ id: 'recent', name: 'Recent', apps: recentApps() }, { id: 'home', name: 'Home', apps: pinnedApps() }]
       .concat(arr(D.spaces).map(sp => ({ id: sp.id, name: sp.name, sp, apps: spaceApps(sp) })));
   }
   const curPage = () => { const p = pages(); return p[Math.min(S.page, p.length - 1)] || p[0]; };
@@ -115,7 +119,7 @@
     return [...m.values()].sort((a, b) => b.last.time - a.last.time);
   }
   const waitingCount = () => convos().length + others().reduce((s, g) => s + g.items.length, 0);
-  const pageLit = p => { if (p.id === 'home') return false; const pk = new Set(p.apps.map(a => a.pkg)); return live().some(n => pk.has(n.pkg)); };
+  const pageLit = p => { if (p.id === 'home' || p.id === 'recent') return false; const pk = new Set(p.apps.map(a => a.pkg)); return live().some(n => pk.has(n.pkg)); };
   function upcoming(days) {
     const end = startOfDay(days), t = now();
     return S.events.filter(e => e.end > t && e.start < end).sort((a, b) => a.start - b.start);
@@ -144,7 +148,23 @@
   }
 
   /* ---------- pages ---------- */
+  // Quick tiles on the Recent page: settings and files one tap away.
+  const filesApp = () => S.apps.find(a => /^com\.sec\.android\.app\.myfiles/.test(a.pkg)) || S.apps.find(a => /^(my )?files$|files by google/i.test(a.label));
+  function quickHtml() {
+    const tile = (act, v, icon, label, on, sub) => `<button class="qt${on ? ' on' : ''}" data-act="${act}" data-v="${esc(v)}" aria-pressed="${on ? 'true' : 'false'}">${ic(icon, 'sm')}<span><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></button>`;
+    const f = filesApp();
+    return `<div class="quick">` +
+      tile('settings', 'main', 'gear', 'Settings') +
+      tile('files', '', 'folder', f ? f.label : 'Files', false, f ? '' : 'Storage') +
+      tile('settings', 'wifi', 'wifi', 'Wi‑Fi') +
+      tile('settings', 'bluetooth', 'bluetooth', 'Bluetooth') +
+      tile('cmd', '.flash', 'bolt', 'Flashlight', S.torch) +
+      tile('cmd', '.dnd', 'moon', 'Do Not Disturb', D.dnd) + '</div>';
+  }
   function glanceHtml(p, i) {
+    if (p.id === 'recent') {
+      return `<div class="g-title g-title-row"><span>Recent</span>${p.apps.length ? '<button class="g-clear" data-act="recent-clear">Clear</button>' : ''}</div>` + quickHtml();
+    }
     if (p.id === 'home') {
       if (S.perms.calendar === false) return `<button class="g-row" data-act="perm" data-v="calendar"><span class="tm">${ic('calendar', 'xs')}</span><span class="tt">Show your calendar here</span><span class="rl">Allow</span></button>`;
       const evs = upcoming(7);
@@ -178,6 +198,7 @@
   }
   function gridHtml(p) {
     const list = p.apps;
+    if (!list.length && p.id === 'recent') return '<div class="g-empty">Apps you open from Switchboard show up here.</div>';
     if (!list.length) {
       return `<div class="g-empty">${p.id === 'home' ? 'Nothing pinned yet. Tap the bar to find an app, then hold it to pin it here.' : `${esc(p.name)} is empty.`}` +
         `<div class="btns" style="justify-content:center"><button class="bt" data-act="${p.id === 'home' ? 'find' : 'picker'}" data-v="${esc(p.id)}">${p.id === 'home' ? 'Find apps' : 'Add apps'}</button></div></div>`;
@@ -187,6 +208,9 @@
       (over ? `<button class="tile more" data-act="more" data-v="${esc(p.id)}"><span class="ico">+${list.length - 15}</span><span class="lbl">All ${esc(p.name)}</span></button>` : '');
   }
   function renderPages() {
+    // Never swap the pages out from under a finger: touch events stay with the element they started on.
+    if (S.touching) { S.pendingPages = true; return; }
+    S.pendingPages = false;
     const ps = pages();
     if (S.page >= ps.length) S.page = ps.length - 1;
     $('#track').innerHTML = ps.map((p, i) => `<section class="page" data-i="${i}" aria-label="${esc(p.name)}"${i === S.page ? '' : ' aria-hidden="true"'}>` +
@@ -204,13 +228,15 @@
     const n = pages().length;
     i = Math.max(0, Math.min(n - 1, i));
     const changed = i !== S.page;
-    S.page = i; store.set('obPage', i);
+    S.page = i; store.set('obPage2', i);
     $('#track').classList.remove('drag');
     placeTrack();
     document.querySelectorAll('.page').forEach((el, k) => el.toggleAttribute('aria-hidden', k !== i));
     renderDots();
     if (changed && !quiet) { buzz(); hideAnswer(); }
   }
+
+  function refreshQuick() { const q = document.querySelector('.page .quick'); if (q) q.outerHTML = quickHtml(); }
 
   /* ---------- the bar ---------- */
   function renderBar() {
@@ -294,19 +320,19 @@
     const t = text.trim(), out = [];
     const row = (icon, title, sub, run, cls = '', right = '') => out.push({ html: `<button class="f-row ${cls}" data-r="${out.length}">${icon}<span class="rt"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}</span>${right}</button>`, run });
     const appRow = (a, sub) => row(`<span class="ri">${appIco(a)}</span>`, esc(a.label), sub || '', () => launchApp(a), '', '', a);
-    if (t.startsWith('/')) {
+    if (isCmd(t)) {
       const m = t.slice(1).match(/^(\S*)(\s+([\s\S]*))?$/), name = norm(m[1]), rest = m[3] || '', hasSpace = !!m[2];
       const c = cmdByName(name);
       if (c && hasSpace) {
-        if (c.sug) for (const s of c.sug(rest.trim())) row(s.icon || `<span class="ri cmd">/</span>`, s.k, s.d || '', () => (s.submit ? runText(s.fill) : setQuery(s.fill)));
+        if (c.sug) for (const s of c.sug(rest.trim())) row(s.icon || `<span class="ri cmd">${ic('jack', 'sm')}</span>`, s.k, s.d || '', () => (s.submit ? runText(s.fill) : setQuery(s.fill)));
         out.unshift({ html: '', run: () => runText(t) });
-        out[0].html = `<button class="f-row" data-r="0"><span class="ri cmd">/</span><span class="rt"><b><code>${esc(t)}</code></b><span>${esc(c.d)}</span></span><span class="rk">go</span></button>`;
+        out[0].html = `<button class="f-row" data-r="0"><span class="ri cmd">${ic('jack', 'sm')}</span><span class="rt"><b><code>${esc(t)}</code></b><span>${esc(c.d)}</span></span><span class="rk">go</span></button>`;
         reindex(out);
         return out;
       }
       const list = CMDS.filter(x => !x.hidden && (!name || x.n.startsWith(name) || arr(x.alias).some(al => al.startsWith(name))));
-      for (const x of list) row(`<span class="ri cmd">/</span>`, `<code>/${esc(x.n)}</code>${x.a ? ` <span style="color:var(--ink-3)">${esc(x.a)}</span>` : ''}`, esc(x.d), () => (x.a && x.a[0] === '<' ? setQuery('/' + x.n + ' ') : runText('/' + x.n)));
-      if (!list.length) row(`<span class="ri cmd">?</span>`, `No command called <code>/${esc(name)}</code>`, 'See every command', () => setQuery('/'));
+      for (const x of list) row(`<span class="ri cmd">${ic('jack', 'sm')}</span>`, `<code>.${esc(x.n)}</code>${x.a ? ` <span style="color:var(--ink-3)">${esc(x.a)}</span>` : ''}`, esc(x.d), () => (x.a && x.a[0] === '<' ? setQuery('.' + x.n + ' ') : runText('.' + x.n)));
+      if (!list.length) row(`<span class="ri cmd">?</span>`, `No command called <code>.${esc(name)}</code>`, 'See every command', () => setQuery('.'));
       return out;
     }
     if (isMath(t)) { const v = calc(t); if (v != null) row(`<span class="ri cmd">=</span>`, esc(fmtNum(v)), esc(t), () => { B.copy(String(+v.toPrecision(12))); toast('Copied ' + fmtNum(v)); exitFind(); }, 'calc', `<span class="rk">copy</span>`); }
@@ -344,7 +370,7 @@
         [...groups].map(([L, list]) => `<div class="az-letter" data-l="${L}">${L}</div><div class="az-grid">${list.map(a => tileHtml(a)).join('')}</div>`).join('') +
         `</div><div id="azstrip" aria-hidden="true">${[...groups.keys()].map(L => `<span data-l="${L}">${L}</span>`).join('')}</div>` +
         `<div class="f-foot">${recent.length ? `<div class="f-h" style="padding-top:2px">Recent</div><div class="recent">${recent.map(a => tileHtml(a)).join('')}</div>` : ''}` +
-        `<div class="chips">${['/timer 25m', '/remind ', '/note ', '/event ', '/flash', '/help'].map(c => `<button class="chip" data-act="fill" data-v="${esc(c)}">${esc(c.trim())}</button>`).join('')}</div></div>`;
+        `<div class="chips">${['.timer 25m', '.remind ', '.note ', '.event ', '.flash', '.help'].map(c => `<button class="chip" data-act="fill" data-v="${esc(c)}">${esc(c.trim())}</button>`).join('')}</div></div>`;
       S.results = [];
       wireAz();
       return;
@@ -381,15 +407,16 @@
     const t = String(text).trim();
     exitFind();
     if (!t) return;
-    if (t.startsWith('/')) return runCommand(t);
+    if (isCmd(t)) return runCommand(t);
     if (egg(t)) return;
     const a = findApp(t); if (a) return launchApp(a);
-    say(`Nothing called “${t}” here.`, { btns: [btn('Search the web', 'cmd', '/search ' + t, 'pri')] });
+    say(`Nothing called “${t}” here.`, { btns: [btn('Search the web', 'cmd', '.search ' + t, 'pri')] });
   }
   function launchApp(a) {
     if (!a) return;
     B.launch(a.key); buzz();
-    D.recent = [a.key].concat(D.recent.filter(k => k !== a.key)).slice(0, 8);
+    D.recent = [a.key].concat(D.recent.filter(k => k !== a.key)).slice(0, 16);
+    setTimeout(() => { if (!S.dragging) renderPages(); }, 600);
     D.fresh = D.fresh.filter(k => k !== a.key);
     save(); exitFind(); hideAnswer();
   }
@@ -402,13 +429,13 @@
   const EGGS = [
     [/^(hello|hey|hey operator|hello operator|hola|buenas)$/, () => { const w = waitingCount(); say(`${greet()}, ${first(D.passport.name)}. ${w ? `${plural(w, 'thing')} waiting. Pull up to see.` : 'The board is quiet.'}`); }],
     [/^(thanks|thank you|thx|ty|gracias)$/, t => say(/gracias/.test(t) ? 'De nada.' : 'Anytime.')],
-    [/^(who are you|operator|what is this|whats this|what's this)$/, () => say('Operator. I patch you through to your apps, your people and your phone. /help shows the whole board.')],
-    [/^(good ?night|gn|buenas noches)$/, () => say(D.dnd ? 'Night. Do Not Disturb is already on.' : 'Night. Want Do Not Disturb on?', { btns: D.dnd ? [] : [btn('Turn it on', 'cmd', '/dnd on', 'pri')] })],
+    [/^(who are you|operator|what is this|whats this|what's this)$/, () => say('Operator. I patch you through to your apps, your people and your phone. .help shows the whole board.')],
+    [/^(good ?night|gn|buenas noches)$/, () => say(D.dnd ? 'Night. Do Not Disturb is already on.' : 'Night. Want Do Not Disturb on?', { btns: D.dnd ? [] : [btn('Turn it on', 'cmd', '.dnd on', 'pri')] })],
     [/^ping$/, () => say('pong')],
     [/^xyzzy$/, () => say('Nothing happens.')],
-    [/^(i'?m bored|bored|surprise me)$/, () => { const pool = visApps().filter(a => !arr(D.pinned).includes(a.key)); const a = pick(pool.length ? pool : visApps()); if (a) say(`How about ${a.label}?`, { btns: [btn('Open ' + a.label, 'launch', a.key, 'pri'), btn('Roll instead', 'cmd', '/roll')] }); }],
+    [/^(i'?m bored|bored|surprise me)$/, () => { const pool = visApps().filter(a => !arr(D.pinned).includes(a.key)); const a = pick(pool.length ? pool : visApps()); if (a) say(`How about ${a.label}?`, { btns: [btn('Open ' + a.label, 'launch', a.key, 'pri'), btn('Roll instead', 'cmd', '.roll')] }); }],
     [/^sudo\b/, () => say('Permission denied. Nice try.')],
-    [/^(che|che boludo)$/, () => say('¿Qué onda? /mate is ready when you are.')]
+    [/^(che|che boludo)$/, () => say('¿Qué onda? .mate is ready when you are.')]
   ];
   const eggKey = text => norm(text).replace(/[.!?¡¿,]+/g, '').replace(/\s+/g, ' ').trim();
   const isEgg = text => EGGS.some(([re]) => re.test(eggKey(text)));
@@ -460,9 +487,9 @@
   const CMDS = [];
   const def = (n, a, d, run, o = {}) => CMDS.push(Object.assign({ n, a, d, run }, o));
   const cmdByName = n => CMDS.find(c => c.n === n || arr(c.alias).includes(n));
-  const appSug = (r, pool, verb) => findApps(r, 6, pool).map(a => ({ icon: `<span class="ri">${appIco(a)}</span>`, k: esc(a.label), fill: '/' + verb + ' ' + a.label, submit: true }));
-  const optSug = (verb, list, r, submit = true) => list.filter(x => norm(x).startsWith(norm(r))).map(x => ({ k: `<code>/${esc(verb)} ${esc(x)}</code>`, fill: '/' + verb + ' ' + x + (submit ? '' : ' '), submit }));
-  const noApp = r => say(`Nothing installed matches “${r}”.`, { btns: [btn('Search the web', 'cmd', '/search ' + r, 'pri')] });
+  const appSug = (r, pool, verb) => findApps(r, 6, pool).map(a => ({ icon: `<span class="ri">${appIco(a)}</span>`, k: esc(a.label), fill: '.' + verb + ' ' + a.label, submit: true }));
+  const optSug = (verb, list, r, submit = true) => list.filter(x => norm(x).startsWith(norm(r))).map(x => ({ k: `<code>.${esc(verb)} ${esc(x)}</code>`, fill: '.' + verb + ' ' + x + (submit ? '' : ' '), submit }));
+  const noApp = r => say(`Nothing installed matches “${r}”.`, { btns: [btn('Search the web', 'cmd', '.search ' + r, 'pri')] });
   const withApp = (r, fn, pool) => { const a = findApps(r, 1, pool || visApps())[0]; if (a && score(a.label, r) >= 15) fn(a); else noApp(r); };
   function runCommand(text) {
     const m = text.slice(1).match(/^(\S*)\s*([\s\S]*)$/);
@@ -470,9 +497,9 @@
     const c = cmdByName(name);
     if (!c) {
       const near = CMDS.filter(x => !x.hidden && lev(x.n, name) <= 2).slice(0, 2);
-      return say(`There's no /${name} command.`, { btns: near.map(x => btn('/' + x.n, 'fill', '/' + x.n + (x.a ? ' ' : ''))).concat([btn('All commands', 'cmd', '/help')]) });
+      return say(`There's no .${name} command.`, { btns: near.map(x => btn('.' + x.n, 'fill', '.' + x.n + (x.a ? ' ' : ''))).concat([btn('All commands', 'cmd', '.help')]) });
     }
-    if (c.a && c.a[0] === '<' && !rest) return setQuery('/' + c.n + ' ');
+    if (c.a && c.a[0] === '<' && !rest) return setQuery('.' + c.n + ' ');
     try { c.run(rest, c); } catch (e) { console.error(e); say('That command failed: ' + (e && e.message ? e.message : 'unknown error')); }
   }
 
@@ -484,13 +511,13 @@
     const p = findContacts(r, 1)[0], num = p ? p.phone : (/\d{3}/.test(r) ? r : null);
     if (!num) return say(`No favorite contact matches “${r}”. Star them in Contacts, or type the number.`);
     B.call(num);
-  }, { group: 'People', sug: r => findContacts(r, 5).map(p => ({ icon: av(p.name, 'round').replace('class="av', 'class="ri av'), k: esc(p.name), d: esc(p.phone), fill: '/call ' + p.name, submit: true })) });
+  }, { group: 'People', sug: r => findContacts(r, 5).map(p => ({ icon: av(p.name, 'round').replace('class="av', 'class="ri av'), k: esc(p.name), d: esc(p.phone), fill: '.call ' + p.name, submit: true })) });
   def('text', '<name> <message>', 'Start a text message', r => {
     const { p, body } = splitContact(r);
     const num = p ? p.phone : (r.match(/^[+\d()\s-]{7,}/) || [])[0];
     if (!num) return say(`No favorite contact matches “${r}”.`);
     B.sms(String(num).trim(), p ? body : r.slice(num.length).trim());
-  }, { group: 'People', sug: r => { const sp = splitContact(r); return sp.p && r.length > sp.p.name.length ? [] : findContacts(r, 5).map(p => ({ icon: av(p.name, 'round').replace('class="av', 'class="ri av'), k: esc(p.name), fill: '/text ' + p.name + ' ', submit: false })); } });
+  }, { group: 'People', sug: r => { const sp = splitContact(r); return sp.p && r.length > sp.p.name.length ? [] : findContacts(r, 5).map(p => ({ icon: av(p.name, 'round').replace('class="av', 'class="ri av'), k: esc(p.name), fill: '.text ' + p.name + ' ', submit: false })); } });
   // Time
   def('timer', '<10m · 1h30m · 90s>', 'Start a timer', r => {
     const s = parseDur(r);
@@ -510,18 +537,18 @@
   }, { group: 'Time', sug: r => optSug('alarm', ['6am', '6:30am', '7am', '7:30am', '8am'], r) });
   def('remind', '<20m · 5pm · fri 9am> <what>', 'Remind you later', r => {
     const p = parseRemind(r);
-    if (!p) return say('Try /remind 20m call Marco, /remind 5pm pick up keys, or /remind tomorrow 9am send invoice.');
+    if (!p) return say('Try .remind 20m call Marco, .remind 5pm pick up keys, or .remind tomorrow 9am send invoice.');
     const x = addReminder(p.at, p.text);
     say('', { k: 'Reminder set', title: x.text, rows: [['When', stamp(x.at)]], btns: [btn('Cancel', 'unremind', x.id)] });
   }, { group: 'Time', sug: r => (/\s/.test(r) ? [] : optSug('remind', ['10m', '20m', '1h', 'tonight', 'tomorrow'], r, false)) });
   def('reminders', '', 'Reminders still to come', () => {
     const list = D.reminders.filter(x => !x.done).sort((a, b) => a.at - b.at);
-    if (!list.length) return say('No reminders coming up. Set one with /remind.');
+    if (!list.length) return say('No reminders coming up. Set one with .remind.');
     say('', { k: 'Coming up', rows: list.slice(0, 8).map(x => [stamp(x.at), x.text]) });
   }, { group: 'Time' });
   def('event', '<title> <when>', 'Add to your calendar', r => {
     const w = parseWhen(r);
-    if (!w.title) return say('Give it a name, like /event Dinner with Lucas fri 7pm');
+    if (!w.title) return say('Give it a name, like .event Dinner with Lucas fri 7pm');
     let day = w.date;
     if (day == null) day = w.time && w.time[0] * 60 + w.time[1] <= new Date().getHours() * 60 + new Date().getMinutes() ? 1 : 0;
     const d = new Date(startOfDay(day)); if (w.time) d.setHours(w.time[0], w.time[1]);
@@ -538,12 +565,14 @@
   def('flash', '[on · off]', 'Flashlight', r => {
     const on = r ? /^(on|1|yes)$/i.test(r) : !S.torch;
     if (B.torch(on) === false) return say("This phone wouldn't switch the flashlight.");
-    S.torch = on; toast(on ? 'Flashlight on' : 'Flashlight off');
+    S.torch = on; toast(on ? 'Flashlight on' : 'Flashlight off'); refreshQuick();
   }, { group: 'Phone', alias: ['torch', 'flashlight'] });
   def('dnd', '[on · off]', 'Do Not Disturb', r => setDnd(r ? /^(on|1|yes)$/i.test(r) : !D.dnd), { group: 'Phone' });
   def('settings', '[wifi · bluetooth · display · sound · battery · apps]', 'Open system settings', r => B.settings(norm(r) || 'main'),
     { group: 'Phone', sug: r => optSug('settings', ['wifi', 'bluetooth', 'display', 'sound', 'battery', 'apps', 'home'], r) });
   def('shade', '', 'Pull down notifications', () => B.shade(), { group: 'Phone' });
+  def('files', '', 'Open your files', () => ACT.files(), { group: 'Phone', alias: ['myfiles'] });
+  def('recent', '', 'Apps you opened lately', () => goPage(0), { group: 'Apps' });
   def('battery', '', 'Battery level', () => {
     const b = B.battery() || S.battery || {}; S.battery = b;
     say('', { k: 'Battery', title: (b.pct != null ? b.pct : '–') + '%', rows: [['State', b.charging ? 'Charging' : 'On battery']] });
@@ -553,20 +582,20 @@
   def('unpin', '<app>', 'Take an app off Home', r => withApp(r, unpinApp, pinnedApps()), { group: 'Organize', sug: r => appSug(r, pinnedApps(), 'unpin') });
   def('move', '<app> to <space>', 'Put an app in a space', r => {
     const m = r.match(/^(.*)\s+to\s+(.+)$/i);
-    if (!m) return say('Use /move <app> to <space>');
+    if (!m) return say('Use .move <app> to <space>');
     const sp = findSpace(m[2]); if (!sp) return say(`There's no space called “${m[2]}”.`);
     withApp(m[1], a => { if (!sp.apps.includes(a.key)) sp.apps.push(a.key); save(); renderPages(); toast(`${a.label} is in ${sp.name}`); });
   }, { group: 'Organize' });
   def('space', '<new · rename · delete> <name>', 'Manage spaces', r => {
     const m = r.match(/^(\S+)\s*(.*)$/), verb = norm(m ? m[1] : ''), arg = m ? m[2].trim() : '';
-    if (/^(new|add|create)$/.test(verb)) { if (!arg) return say('Name it, like /space new Travel'); const sp = createSpace(arg); goPage(pages().findIndex(p => p.id === sp.id)); return pickerSheet(sp.id); }
+    if (/^(new|add|create)$/.test(verb)) { if (!arg) return say('Name it, like .space new Travel'); const sp = createSpace(arg); goPage(pages().findIndex(p => p.id === sp.id)); return pickerSheet(sp.id); }
     if (verb === 'rename') {
       const mm = arg.match(/^(.*?)\s+to\s+(.+)$/i), sp = mm && findSpace(mm[1]);
-      if (!sp) return say('Use /space rename <space> to <new name>');
+      if (!sp) return say('Use .space rename <space> to <new name>');
       sp.name = mm[2].slice(0, 40); save(); renderPages(); return toast('Renamed to ' + sp.name);
     }
     if (/^(delete|remove)$/.test(verb)) { const sp = findSpace(arg); if (!sp) return say(`There's no space called “${arg}”.`); deleteSpace(sp.id); return toast(`Deleted ${sp.name}`); }
-    say('Use /space new, /space rename or /space delete.');
+    say('Use .space new, .space rename or .space delete.');
   }, { group: 'Organize', sug: r => (/\s/.test(r) ? [] : optSug('space', ['new', 'rename', 'delete'], r, false)) });
   def('hide', '<app>', 'Hide an app everywhere', r => withApp(r, hideApp), { group: 'Organize', sug: r => appSug(r, visApps(), 'hide') });
   def('unhide', '<app>', 'Show a hidden app again', r => withApp(r, a => { D.hidden = D.hidden.filter(k => k !== a.key); save(); renderPages(); toast(a.label + ' is back'); }, S.apps.filter(a => isHidden(a.key))),
@@ -580,9 +609,9 @@
     const m = norm(r).match(/^(\d*)d(\d+)$/) || norm(r).match(/^()(\d+)$/);
     const n = Math.min(20, Math.max(1, m && m[1] ? +m[1] : 1)), sides = Math.min(1000, Math.max(2, m ? +m[2] : 6));
     const rolls = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * sides));
-    say('', { k: `${n}d${sides}`, title: String(rolls.reduce((a, b) => a + b, 0)), lines: n > 1 ? [rolls.join(' + ')] : [], btns: [btn('Roll again', 'cmd', '/roll ' + (r || ''))] });
+    say('', { k: `${n}d${sides}`, title: String(rolls.reduce((a, b) => a + b, 0)), lines: n > 1 ? [rolls.join(' + ')] : [], btns: [btn('Roll again', 'cmd', '.roll ' + (r || ''))] });
   }, { group: 'Fun' });
-  def('flip', '', 'Flip a coin', () => say('', { k: 'Coin', title: Math.random() < 0.5 ? 'Heads' : 'Tails', btns: [btn('Flip again', 'cmd', '/flip')] }), { group: 'Fun' });
+  def('flip', '', 'Flip a coin', () => say('', { k: 'Coin', title: Math.random() < 0.5 ? 'Heads' : 'Tails', btns: [btn('Flip again', 'cmd', '.flip')] }), { group: 'Fun' });
   def('8ball', '<question>', 'Ask a yes-or-no question', r => say('', { k: r.slice(0, 80), title: pick(EIGHT) }), { group: 'Fun' });
   def('mate', '', 'Count cebadas', () => {
     if (!D.mate || now() - D.mate.t > 3 * HOUR) D.mate = { n: 0, t: now() };
@@ -639,7 +668,7 @@
       case 'ready': return updCard(E('New page downloaded', ['Switch now, or it switches by itself next time you come home.'], { btns: [btn('Switch now', 'upd-apply', '', 'pri')] }));
       case 'rolled-back': return say("The newest page from GitHub didn't start, so I went back to the one built into the app. Nothing was lost.");
       case 'error': return updCard(E(u.code === 'key' ? 'Needs one reinstall' : "Couldn't update", [u.msg || 'Something went wrong.'],
-        { btns: u.code === 'key' ? [btn('Open releases', 'url', 'https://github.com/jere-mee-as/switchboard/releases/latest', 'pri')] : [btn('Try again', 'cmd', '/update')] }));
+        { btns: u.code === 'key' ? [btn('Open releases', 'url', 'https://github.com/jere-mee-as/switchboard/releases/latest', 'pri')] : [btn('Try again', 'cmd', '.update')] }));
     }
   }
   function noteNewPage() {
@@ -652,14 +681,14 @@
   /* ---------- organizing ---------- */
   function pinApp(a) { D.pinned = arr(D.pinned); if (!D.pinned.includes(a.key)) D.pinned.push(a.key); save(); renderPages(); toast(`Pinned ${a.label} to Home`); }
   function unpinApp(a) { D.pinned = arr(D.pinned).filter(k => k !== a.key); save(); renderPages(); toast(`Took ${a.label} off Home`); }
-  function hideApp(a) { if (!D.hidden.includes(a.key)) D.hidden.push(a.key); save(); renderPages(); toast(`Hid ${a.label}. /unhide brings it back.`); }
+  function hideApp(a) { if (!D.hidden.includes(a.key)) D.hidden.push(a.key); save(); renderPages(); toast(`Hid ${a.label}. .unhide brings it back.`); }
   function createSpace(name) { if (!Array.isArray(D.spaces)) D.spaces = []; const sp = { id: uid(name), name: String(name).slice(0, 40), glyph: '', apps: [] }; D.spaces.push(sp); save(); renderPages(); return sp; }
-  function deleteSpace(id) { const i = pages().findIndex(p => p.id === id); D.spaces = D.spaces.filter(s => s.id !== id); save(); if (S.page >= i) S.page = Math.max(0, S.page - 1); renderPages(); }
+  function deleteSpace(id) { const i = pages().findIndex(p => p.id === id); D.spaces = D.spaces.filter(s => s.id !== id); save(); if (S.page >= i) S.page = Math.max(HOME_I, S.page - 1); renderPages(); }
   function addNote(text) { D.notes.push({ id: 'nt' + now().toString(36), t: now(), text: text.slice(0, 4000), pin: false }); if (D.notes.length > 500) D.notes.shift(); save(); }
   function setDnd(on) {
     const ok = B.setDnd(!!on);
     if (ok === false || ok === null) { toast('Allow Do Not Disturb access first'); B.askPerm('dnd'); return; }
-    D.dnd = !!on; save(); renderTop();
+    D.dnd = !!on; save(); renderTop(); refreshQuick();
     toast(on ? 'Do Not Disturb on' : 'Do Not Disturb off');
     if (S.sheet === 'you') youSheet();
   }
@@ -728,7 +757,7 @@
     const ph = [];
     if (D.timer && D.timer.end > now()) ph.push(`<div class="ph"><span class="gi">${ic('timer')}</span><span class="tx">Timer<small>Ends ${esc(clock(D.timer.end))}</small></span><span class="mono" data-countdown="${D.timer.end}">${esc(fmtDur(Math.round((D.timer.end - now()) / 1000)))}</span></div>`);
     for (const r of D.reminders.filter(x => !x.done).sort((a, b) => a.at - b.at).slice(0, 4)) ph.push(`<div class="ph"><span class="gi">${ic('alarm')}</span><span class="tx">${esc(r.text)}<small>${esc(stamp(r.at))}</small></span><button class="bt ghost" data-act="unremind" data-v="${esc(r.id)}">Cancel</button></div>`);
-    if (D.dnd) ph.push(`<div class="ph"><span class="gi">${ic('moon')}</span><span class="tx">Do Not Disturb is on</span><button class="bt ghost" data-act="cmd" data-v="/dnd off">Turn off</button></div>`);
+    if (D.dnd) ph.push(`<div class="ph"><span class="gi">${ic('moon')}</span><span class="tx">Do Not Disturb is on</span><button class="bt ghost" data-act="cmd" data-v=".dnd off">Turn off</button></div>`);
     const lastA = D.answers.filter(a => now() - a.t < 12 * HOUR).slice(-2).reverse();
     for (const a of lastA) ph.push(`<button class="ph" data-act="answer-show" data-v="${esc(a.id)}" style="width:100%;text-align:left"><span class="gi">${ic('jack')}</span><span class="tx">${esc(a.title || a.text || a.k || '')}<small>${esc(bot())} · ${esc(ago(a.t))}</small></span></button>`);
     if (ph.length) h += `<div class="sec-h">Your phone</div>` + ph.join('');
@@ -771,7 +800,7 @@
   }
 
   function agendaSheet() {
-    let h = head('This week', `<button class="bt" data-act="fill" data-v="/event ">${ic('plus')}New</button>`);
+    let h = head('This week', `<button class="bt" data-act="fill" data-v=".event ">${ic('plus')}New</button>`);
     if (S.perms.calendar === false) h += `<div class="perm"><b>Your calendar</b>Allow calendar access to see your week here.<div class="btns"><button class="bt pri" data-act="perm" data-v="calendar">Allow</button></div></div>`;
     const evs = upcoming(8);
     if (S.perms.calendar !== false && !evs.length) h += '<div class="quiet">Nothing on the calendar this week.</div>';
@@ -786,10 +815,10 @@
   function spacesSheet() {
     const ps = pages();
     let h = head('Spaces', `<button class="bt" data-act="space-new">${ic('plus')}New</button>`);
-    h += ps.map((p, i) => `<div style="display:flex;align-items:center;gap:4px"><button class="row ${i === S.page ? 'on' : ''}" data-act="go" data-v="${i}">` +
+    h += ps.map((p, i) => p.id === 'recent' ? '' : `<div style="display:flex;align-items:center;gap:4px"><button class="row ${i === S.page ? 'on' : ''}" data-act="go" data-v="${i}">` +
       `<span class="ri">${p.id === 'home' ? ic('home', 'sm') : (p.apps[0] ? appIco(p.apps[0]) : ic('layers', 'sm'))}</span><span class="rt"><b>${esc(p.name)}</b><small>${plural(p.apps.length, 'app')}</small></span>${pageLit(p) ? '<span class="lampdot"></span>' : ''}</button>` +
       (p.id !== 'home' ? `<button class="more" data-act="space-opts" data-v="${esc(p.id)}" aria-label="${esc(p.name)} options">${ic('dots')}</button>` : '<span style="width:40px;flex:none"></span>') + '</div>').join('');
-    h += '<div class="quiet">Swipe sideways on Home to move between these.</div>';
+    h += '<div class="quiet">Swipe sideways on Home to move between these. Recent is one swipe to the right of Home.</div>';
     openSheet('spaces', h);
   }
   function spaceOptsSheet(id, renaming) {
@@ -827,23 +856,23 @@
     h += `<div class="quiet">Hold an app on a page and drag to reorder it.</div>`;
     h += `<button class="row" data-act="app-mute" data-v="${esc(key)}"><span class="ri">${ic(muted(a.pkg) ? 'bell' : 'bell-off', 'sm')}</span><span class="rt"><b>${muted(a.pkg) ? 'Show its badges again' : 'Mute its badges'}</b></span></button>` +
       `<button class="row" data-act="app-info" data-v="${esc(key)}"><span class="ri">${ic('info', 'sm')}</span><span class="rt"><b>App info</b></span></button>` +
-      `<button class="row" data-act="app-hide" data-v="${esc(key)}"><span class="ri">${ic('eye-off', 'sm')}</span><span class="rt"><b>Hide everywhere</b><small>/unhide brings it back</small></span></button>` +
+      `<button class="row" data-act="app-hide" data-v="${esc(key)}"><span class="ri">${ic('eye-off', 'sm')}</span><span class="rt"><b>Hide everywhere</b><small>.unhide brings it back</small></span></button>` +
       `<button class="row" data-act="app-uninstall" data-v="${esc(key)}"><span class="ri" style="color:var(--call)">${ic('trash', 'sm')}</span><span class="rt"><b>Uninstall</b></span></button>`;
     if (S.sheet === 'app') refreshSheet(h); else openSheet('app', h);
     buzz('long');
   }
   function notesSheet() {
     const list = D.notes.slice().reverse();
-    let h = head('Notes', `<button class="bt" data-act="fill" data-v="/note ">${ic('plus')}New</button>`);
+    let h = head('Notes', `<button class="bt" data-act="fill" data-v=".note ">${ic('plus')}New</button>`);
     h += list.length ? list.map(n => `<div class="note"><p>${esc(n.text)}<time>${esc(stamp(n.t))}</time></p><button class="icon-btn" data-act="copy" data-v="${esc(n.text)}" aria-label="Copy">${ic('copy', 'sm')}</button><button class="icon-btn" data-act="note-del" data-v="${esc(n.id)}" aria-label="Delete">${ic('trash', 'sm')}</button></div>`).join('')
-      : '<div class="quiet">No notes yet. Type /note and what you want to keep.</div>';
+      : '<div class="quiet">No notes yet. Type .note and what you want to keep.</div>';
     if (S.sheet === 'notes') refreshSheet(h); else openSheet('notes', h);
   }
   function helpSheet() {
     const groups = new Map();
     for (const c of CMDS) { if (c.hidden) continue; if (!groups.has(c.group)) groups.set(c.group, []); groups.get(c.group).push(c); }
-    let h = head('Commands') + '<div class="quiet" style="padding-top:0">Type / in the bar. Anything else you type finds apps, people, sums and the web.</div><div class="cmdlist">';
-    for (const [g, list] of groups) h += `<div class="sec-h">${esc(g)}</div>` + list.map(c => `<button class="cmdrow" data-act="fill" data-v="/${esc(c.n)}${c.a ? ' ' : ''}"><code>/${esc(c.n)}</code><span>${esc(c.d)}</span></button>`).join('');
+    let h = head('Commands') + '<div class="quiet" style="padding-top:0">Type a period ( . ) in the bar for commands. Anything else you type finds apps, people, sums and the web.</div><div class="cmdlist">';
+    for (const [g, list] of groups) h += `<div class="sec-h">${esc(g)}</div>` + list.map(c => `<button class="cmdrow" data-act="fill" data-v=".${esc(c.n)}${c.a ? ' ' : ''}"><code>.${esc(c.n)}</code><span>${esc(c.d)}</span></button>`).join('');
     openSheet('help', h + '</div>');
   }
 
@@ -857,16 +886,16 @@
       `<div class="btns"><button class="bt pri" data-act="qr" data-v="-1">${ic('qr')}Show my code</button><button class="bt" data-act="pp-edit">${ic('edit')}Edit</button></div></div></div>`;
     if (links.length) h += `<div class="sec-h">Links</div>` + links.map((l, i) => { const d = linkDef(l), u = linkUrl(l); return `<div style="display:flex;align-items:center;gap:4px"><button class="row" data-act="${u ? 'url' : 'copy'}" data-v="${esc(u || l.v)}"><span class="ri">${ic(d.i, 'sm')}</span><span class="rt"><b>${esc(linkShow(l))}</b><small>${esc(linkName(l))}${u ? '' : ' · tap to copy'}</small></span></button><button class="more" data-act="qr" data-v="${i}" aria-label="Code for ${esc(linkName(l))}">${ic('qr', 'sm')}</button></div>`; }).join('');
     h += `<div class="sec-h">Phone</div>` +
-      `<button class="row" data-act="cmd" data-v="/dnd"><span class="ri">${ic('moon', 'sm')}</span><span class="rt"><b>Do Not Disturb</b></span><span class="toggle ${D.dnd ? 'on' : ''}"></span></button>` +
-      `<button class="row" data-act="cmd" data-v="/flash"><span class="ri">${ic('bolt', 'sm')}</span><span class="rt"><b>Flashlight</b></span><span class="toggle ${S.torch ? 'on' : ''}"></span></button>` +
+      `<button class="row" data-act="cmd" data-v=".dnd"><span class="ri">${ic('moon', 'sm')}</span><span class="rt"><b>Do Not Disturb</b></span><span class="toggle ${D.dnd ? 'on' : ''}"></span></button>` +
+      `<button class="row" data-act="cmd" data-v=".flash"><span class="ri">${ic('bolt', 'sm')}</span><span class="rt"><b>Flashlight</b></span><span class="toggle ${S.torch ? 'on' : ''}"></span></button>` +
       `<div class="row"><span class="ri">${ic('battery', 'sm')}</span><span class="rt"><b>${b.pct != null ? b.pct + '%' : '–'}${b.charging ? ', charging' : ''}</b><small>${esc(dv.model || '')}${dv.android ? ' · Android ' + esc(dv.android) : ''}${dv.total ? ' · ' + gb(dv.free) + ' free of ' + gb(dv.total) : ''}</small></span></div>`;
     h += `<div class="sec-h">Launcher</div><div class="seg">${[['auto', 'Auto'], ['dark', 'Dark'], ['black', 'Black'], ['light', 'Light']].map(([v, l]) => `<button class="${(D.skin || 'auto') === v ? 'on' : ''}" data-act="skin" data-v="${v}">${l}</button>`).join('')}</div>` +
       `<div class="swatches" style="margin-top:10px">${Object.entries(ACCENTS).map(([k, a]) => `<button class="sw ${D.fun.accent === k ? 'on' : ''}" style="background:${a[0]}" data-act="accent" data-v="${k}" aria-label="${a[2]}"></button>`).join('')}</div>`;
     const need = [['notif', 'Notification access', 'to see and answer what comes in'], ['calendar', 'Calendar', 'for your week'], ['contacts', 'Contacts', 'to call and text favorites'], ['dnd', 'Do Not Disturb access', 'for the moon toggle']].filter(([k]) => pm[k] === false);
     if (pm.isHome === false) h += `<button class="row" data-act="set-home"><span class="ri" style="color:var(--brass)">${ic('home', 'sm')}</span><span class="rt"><b>Make Switchboard your home screen</b></span></button>`;
     h += need.map(([k, t, s]) => `<button class="row" data-act="perm" data-v="${k}"><span class="ri">${ic('shield', 'sm')}</span><span class="rt"><b>${t}</b><small>Allow ${s}</small></span></button>`).join('');
-    h += `<button class="row" data-act="cmd" data-v="/update"><span class="ri">${ic('down', 'sm')}</span><span class="rt"><b>Check for updates</b><small>App ${esc(String(B.version() || '?'))} · page One bar 1.0</small></span></button>` +
-      `<button class="row" data-act="cmd" data-v="/help"><span class="ri">${ic('info', 'sm')}</span><span class="rt"><b>Every command</b></span></button>`;
+    h += `<button class="row" data-act="cmd" data-v=".update"><span class="ri">${ic('down', 'sm')}</span><span class="rt"><b>Check for updates</b><small>App ${esc(String(B.version() || '?'))} · page One bar 1.0</small></span></button>` +
+      `<button class="row" data-act="cmd" data-v=".help"><span class="ri">${ic('info', 'sm')}</span><span class="rt"><b>Every command</b></span></button>`;
     if (S.sheet === 'you') refreshSheet(h); else openSheet('you', h);
   }
   function qrSheet(i) {
@@ -929,7 +958,7 @@
     find: v => { if (v && v !== 'home') { setQuery(v); } else { enterFind(); q().focus({ preventScroll: true }); } },
     'find-close': () => exitFind(),
     fill: v => { closeSheet(true); hideAnswer(); setQuery(v); },
-    cmd: v => { hideAnswer(); if (S.sheet && !/^\/(dnd|flash)/.test(v)) closeSheet(); runText(v); if (S.sheet === 'you') youSheet(); },
+    cmd: v => { hideAnswer(); if (S.sheet && !/^[./](dnd|flash)/.test(v)) closeSheet(); runText(v); if (S.sheet === 'you') youSheet(); },
     waiting: () => (S.sheet === 'waiting' ? closeSheet() : openWaiting()),
     agenda: () => agendaSheet(),
     you: () => { S.ppDraft = null; youSheet(); },
@@ -943,6 +972,9 @@
     event: v => B.openEvent(v),
     perm: v => B.askPerm(v),
     'set-home': () => B.setHome(),
+    settings: v => B.settings(v || 'main'),
+    files: () => { const f = filesApp(); if (f) launchApp(f); else B.settings('storage'); },
+    'recent-clear': () => { D.recent = []; save(); renderPages(); toast('Cleared recent apps'); },
     nopen: v => { B.notifOpen(v); closeSheet(); },
     naction: (v, el) => { B.notifAction(v, +el.dataset.i); },
     reply: v => startReply(v),
@@ -978,7 +1010,7 @@
     'space-rename-start': v => spaceOptsSheet(v, true),
     'space-rename': v => { const sp = spaceOf(v), el = $('#spName'); if (sp && el && el.value.trim()) { sp.name = el.value.trim().slice(0, 40); save(); renderPages(); } spaceOptsSheet(v); },
     'space-sort': (v, el) => { const sp = spaceOf(el.dataset.id); if (!sp) return; if (v === 'custom' && sp.sort !== 'custom') sp.apps = spaceApps(sp).map(a => a.key).concat(sp.apps.filter(k => !appOf(k) || isHidden(k))); sp.sort = v === 'custom' ? 'custom' : 'az'; save(); renderPages(); spaceOptsSheet(sp.id); },
-    'space-move': (v, el) => { const i = D.spaces.findIndex(s => s.id === el.dataset.id), j = i + +v; if (i < 0 || j < 0 || j >= D.spaces.length) return; const [s] = D.spaces.splice(i, 1); D.spaces.splice(j, 0, s); S.page = j + 1; save(); renderPages(); spaceOptsSheet(s.id); },
+    'space-move': (v, el) => { const i = D.spaces.findIndex(s => s.id === el.dataset.id), j = i + +v; if (i < 0 || j < 0 || j >= D.spaces.length) return; const [s] = D.spaces.splice(i, 1); D.spaces.splice(j, 0, s); S.page = j + 2; save(); renderPages(); spaceOptsSheet(s.id); },
     'space-delete': v => { const sp = spaceOf(v); if (!sp) return; deleteSpace(v); toast(`Deleted ${sp.name}. Its apps are still in the bar.`); spacesSheet(); },
     picker: v => pickerSheet(v),
     'pick-toggle': v => { const sp = spaceOf(S.pickFor); if (!sp) return; sp.apps = sp.apps.includes(v) ? sp.apps.filter(k => k !== v) : sp.apps.concat([v]); save(); renderPages(); const r = document.querySelector(`[data-act="pick-toggle"][data-v="${CSS.escape(v)}"] .check`); if (r) r.classList.toggle('on', sp.apps.includes(v)); },
@@ -1012,15 +1044,18 @@
     el.addEventListener('touchstart', e => {
       if (S.sheet || S.player || e.touches.length > 1) { g = null; return; }
       if (S.finding && el.id === 'bar') { g = null; return; }
+      S.touching = true;
       const t = e.touches[0];
       g = { x: t.clientX, y: t.clientY, ax: null, pts: [[t.clientX, t.clientY, performance.now()]], tile: e.target.closest('#stage .tile[data-key]') };
       if (g.tile) g.lp = setTimeout(() => holdTile(g), 430);
+      if (el.id === 'dots') { const k = g; g.lp = setTimeout(() => startScrub(k), 260); }
     }, { passive: true });
     el.addEventListener('touchmove', e => {
       if (!g) return;
       const t = e.touches[0], dx = t.clientX - g.x, dy = t.clientY - g.y;
       g.pts.push([t.clientX, t.clientY, performance.now()]); if (g.pts.length > 6) g.pts.shift();
-      if (g.drag) { e.preventDefault(); return dragTile(g, t); }
+      if (g.scrub) { e.preventDefault(); return scrubTo(t.clientX); }
+      if (g.drag && g.ghost) { e.preventDefault(); return dragTile(g, t); }
       if (!g.ax) {
         if (Math.hypot(dx, dy) < 9) return;
         clearTimeout(g.lp);
@@ -1039,7 +1074,10 @@
     const end = () => {
       if (!g) return;
       const k = g; g = null; clearTimeout(k.lp);
-      if (k.drag) return dropTile(k);
+      S.touching = false;
+      if (S.pendingPages && !k.drag) setTimeout(() => { if (S.pendingPages) renderPages(); }, 450);
+      if (k.scrub) return endScrub();
+      if (k.drag && k.ghost) return dropTile(k);
       if (k.held) { k.tile.classList.remove('lift'); quietUntil = performance.now() + 450; return appSheet(k.tile.dataset.key); }
       if (!k.ax) return;
       quietUntil = performance.now() + 350;
@@ -1056,6 +1094,20 @@
     };
     el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
   }
+  // Hold the dots, then slide along them to go straight to any page.
+  function startScrub(g) {
+    g.scrub = true; buzz('long'); hideAnswer();
+    $('#dots').classList.add('scrub');
+    scrubTo(g.x);
+  }
+  function scrubTo(x) {
+    const r = $('#dots').getBoundingClientRect(), n = pages().length, pad = 36;
+    const f = Math.max(0, Math.min(1, (x - r.left - pad) / Math.max(1, r.width - pad * 2)));
+    const i = Math.round(f * (n - 1));
+    if (i !== S.page) { goPage(i, true); buzz(); }
+  }
+  function endScrub() { quietUntil = performance.now() + 400; $('#dots').classList.remove('scrub'); }
+
   // Waiting follows your finger up from the bar.
   function peekWaiting(px) {
     const sh = $('#sheet');
@@ -1102,6 +1154,7 @@
   /* hold an app: options; hold and drag: put it where you want */
   function holdTile(g) { g.held = true; g.tile.classList.add('lift'); buzz('long'); }
   function startDrag(g, t) {
+    if (curPage().id === 'recent') { g.drag = false; g.held = true; return; }
     S.dragging = true;
     const tile = g.tile, r = tile.getBoundingClientRect();
     const ghost = tile.cloneNode(true); ghost.classList.add('ghost'); ghost.classList.remove('lift');
@@ -1130,7 +1183,7 @@
     }
   }
   function dropTile(g) {
-    S.dragging = false;
+    S.dragging = false; S.touching = false;
     quietUntil = performance.now() + 450;
     g.ghost.remove(); g.tile.classList.remove('hold'); g.grid.classList.remove('sorting');
     const order = [...g.grid.querySelectorAll('.tile[data-key]')].map(el => el.dataset.key), set = new Set(order);
@@ -1179,9 +1232,9 @@
     if (S.reply) return ACT['reply-cancel']();
     if (S.finding) return exitFind();
     if (!$('#answer').hidden) return hideAnswer();
-    if (S.page !== 0) return goPage(0);
+    if (S.page !== HOME_I) return goPage(HOME_I);
   }
-  function goHome() { closePlayer(); closeSheet(); exitFind(); hideAnswer(); goPage(0, true); }
+  function goHome() { closePlayer(); closeSheet(); exitFind(); hideAnswer(); goPage(HOME_I, true); }
 
   /* ---------- render ---------- */
   function renderAll() { renderTop(); if (!S.dragging) renderPages(); renderBar(); renderSide(); if (S.sheet === 'waiting') refreshSheet(waitingHtml()); }
