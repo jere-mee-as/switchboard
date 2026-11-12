@@ -121,6 +121,8 @@ img{display:block}
 .tile:active .ico{transform:scale(.92)}
 .tile .bdg{position:absolute;top:-4px;left:calc(50% + 20px);min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--lamp);color:var(--brass-ink);font:700 11px/20px var(--font-ui);text-align:center;box-shadow:0 0 0 3px var(--bg)}
 .tile .bdg.dot{min-width:0;width:11px;height:11px;padding:0;top:-1px;left:calc(50% + 24px)}
+.app.nolabels .page .tile .lbl{display:none}
+.app.nolabels .page .grid{row-gap:20px}
 .tile.more .ico{display:grid;place-items:center;background:var(--field);color:var(--ink-2);font:600 15px var(--font-mono)}
 .tile.lift .ico{transform:scale(1.1);box-shadow:0 10px 24px rgba(0,0,0,.35)}
 .tile.ghost{position:fixed;z-index:60;pointer-events:none;width:84px}

@@ -3,7 +3,7 @@
      tap the bar        type to your phone: apps, people, .commands, sums, the web
      swipe sideways     next space; Home is in the middle: Recent (apps, settings, files) to its left, spaces to its right
      pull up            everything waiting, people first; reply right from the bar
-     pull down          the notification shade
+     pull down          every app, A–Z (pull down from the date at the top for the notification shade)
      tap the cover      the album-art player
      hold an app        options; hold and drag to reorder
    Unfolded, what's waiting sits beside home.
@@ -48,7 +48,7 @@
   };
   const D = Object.assign({}, DEF, store.get('data', {}));
   if ((D.v || 1) < 2) { D.spaces = null; D.pinned = null; D.dnd = D.status === 'dnd'; delete D.status; delete D.note; D.v = 2; }
-  D.fun = Object.assign({ accent: 'brass', bot: 'Operator', motion: 'calm' }, D.fun || {});
+  D.fun = Object.assign({ accent: 'brass', bot: 'Operator', motion: 'calm', labels: false }, D.fun || {});
   if (!Array.isArray(D.answers)) D.answers = [];
   let saveT = 0;
   const save = () => { clearTimeout(saveT); saveT = setTimeout(() => store.set('data', D), 120); };
@@ -194,7 +194,7 @@
   function tileHtml(a, extra = '') {
     const b = pkgBadge(a.pkg);
     const bd = b.m ? `<span class="bdg">${b.m > 99 ? '99+' : b.m}</span>` : b.u ? '<span class="bdg dot"></span>' : '';
-    return `<button class="tile" data-key="${esc(a.key)}" data-act="launch" data-v="${esc(a.key)}" ${extra}><span class="ico">${appIco(a)}</span>${bd}<span class="lbl">${esc(a.label)}</span></button>`;
+    return `<button class="tile" aria-label="${esc(a.label)}" data-key="${esc(a.key)}" data-act="launch" data-v="${esc(a.key)}" ${extra}><span class="ico">${appIco(a)}</span>${bd}<span class="lbl">${esc(a.label)}</span></button>`;
   }
   function gridHtml(p) {
     const list = p.apps;
@@ -306,7 +306,7 @@
   }
   function exitFind() {
     if (!S.finding) return;
-    S.finding = false; S.pool = null; q().value = ''; q().blur();
+    S.finding = false; S.pool = null; S.fromDrawer = false; q().value = ''; q().blur();
     renderBar();
   }
   function setQuery(v, focus = true) {
@@ -619,6 +619,7 @@
     say('', Object.assign({ id: 'mate' }, mateAnswer()));
   }, { group: 'Fun' });
   // Launcher
+  def('names', '[on · off]', 'App names under icons', r => { D.fun.labels = r ? /^(on|1|yes)$/i.test(r) : !D.fun.labels; save(); applySkin(); toast(D.fun.labels ? 'App names on' : 'App names off'); }, { group: 'Launcher', alias: ['labels'] });
   def('theme', '<auto · dark · black · light>', 'Appearance', r => {
     const k = norm(r);
     if (!['auto', 'dark', 'black', 'light'].includes(k)) return say('Pick auto, dark, black or light.');
@@ -696,6 +697,7 @@
     const app = $('#app');
     if (D.skin && D.skin !== 'auto') app.dataset.skin = D.skin; else delete app.dataset.skin;
     app.dataset.motion = D.fun.motion || 'calm';
+    app.classList.toggle('nolabels', !D.fun.labels);
     const a = ACCENTS[D.fun.accent], props = ['--brass', '--brass-ink', '--lamp', '--lamp-glow'];
     if (a && D.fun.accent !== 'brass') [a[0], a[1], a[0], a[0] + '80'].forEach((v, i) => app.style.setProperty(props[i], v));
     else props.forEach(p => app.style.removeProperty(p));
@@ -889,7 +891,7 @@
       `<button class="row" data-act="cmd" data-v=".dnd"><span class="ri">${ic('moon', 'sm')}</span><span class="rt"><b>Do Not Disturb</b></span><span class="toggle ${D.dnd ? 'on' : ''}"></span></button>` +
       `<button class="row" data-act="cmd" data-v=".flash"><span class="ri">${ic('bolt', 'sm')}</span><span class="rt"><b>Flashlight</b></span><span class="toggle ${S.torch ? 'on' : ''}"></span></button>` +
       `<div class="row"><span class="ri">${ic('battery', 'sm')}</span><span class="rt"><b>${b.pct != null ? b.pct + '%' : '–'}${b.charging ? ', charging' : ''}</b><small>${esc(dv.model || '')}${dv.android ? ' · Android ' + esc(dv.android) : ''}${dv.total ? ' · ' + gb(dv.free) + ' free of ' + gb(dv.total) : ''}</small></span></div>`;
-    h += `<div class="sec-h">Launcher</div><div class="seg">${[['auto', 'Auto'], ['dark', 'Dark'], ['black', 'Black'], ['light', 'Light']].map(([v, l]) => `<button class="${(D.skin || 'auto') === v ? 'on' : ''}" data-act="skin" data-v="${v}">${l}</button>`).join('')}</div>` +
+    h += `<div class="sec-h">Launcher</div><button class="row" data-act="labels"><span class="ri">${ic('grid', 'sm')}</span><span class="rt"><b>App names on Home and spaces</b></span><span class="toggle ${D.fun.labels ? 'on' : ''}"></span></button><div class="seg">${[['auto', 'Auto'], ['dark', 'Dark'], ['black', 'Black'], ['light', 'Light']].map(([v, l]) => `<button class="${(D.skin || 'auto') === v ? 'on' : ''}" data-act="skin" data-v="${v}">${l}</button>`).join('')}</div>` +
       `<div class="swatches" style="margin-top:10px">${Object.entries(ACCENTS).map(([k, a]) => `<button class="sw ${D.fun.accent === k ? 'on' : ''}" style="background:${a[0]}" data-act="accent" data-v="${k}" aria-label="${a[2]}"></button>`).join('')}</div>`;
     const need = [['notif', 'Notification access', 'to see and answer what comes in'], ['calendar', 'Calendar', 'for your week'], ['contacts', 'Contacts', 'to call and text favorites'], ['dnd', 'Do Not Disturb access', 'for the moon toggle']].filter(([k]) => pm[k] === false);
     if (pm.isHome === false) h += `<button class="row" data-act="set-home"><span class="ri" style="color:var(--brass)">${ic('home', 'sm')}</span><span class="rt"><b>Make Switchboard your home screen</b></span></button>`;
@@ -999,6 +1001,7 @@
     'sheet-close': () => closeSheet(),
     scrim: () => { if (S.player) closePlayer(); else closeSheet(); },
     skin: v => { D.skin = v; save(); applySkin(); youSheet(); },
+    labels: () => { D.fun.labels = !D.fun.labels; save(); applySkin(); youSheet(); },
     accent: v => { D.fun.accent = v; save(); applySkin(); youSheet(); },
     qr: v => qrSheet(+v),
     'pp-edit': () => { S.ppDraft = null; passportEditSheet(); },
@@ -1089,11 +1092,14 @@
       } else if (k.ax === 'up' && !S.wide) {
         if (-dy > 70 || vy < -0.5) settleWaiting(true); else settleWaiting(false);
       } else if (k.ax === 'down') {
-        if (dy > 60 || vy > 0.5) B.shade();
+        if (dy > 60 || vy > 0.5) { if (el.id === 'top') B.shade(); else openDrawer(); }
       }
     };
     el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
   }
+  // The app drawer is the bar's empty state, opened without the keyboard.
+  function openDrawer() { closeSheet(); hideAnswer(); S.fromDrawer = true; enterFind(); buzz(); }
+
   // Hold the dots, then slide along them to go straight to any page.
   function startScrub(g) {
     g.scrub = true; buzz('long'); hideAnswer();
@@ -1197,9 +1203,14 @@
   function wire() {
     const app = $('#app');
     app.addEventListener('click', onClick);
-    homeGestures($('#stage')); homeGestures($('#bar')); homeGestures($('#dots'));
+    homeGestures($('#stage')); homeGestures($('#bar')); homeGestures($('#dots')); homeGestures($('#top'));
     pullToClose($('#sheet'), () => $('#sheetBody'), () => closeSheet());
     pullToClose($('#player'), () => $('#player .pl-body'), closePlayer);
+    // Pull down at the top of the drawer (or the results) to put it away.
+    let fd = null;
+    $('#find').addEventListener('touchstart', e => { const sc = $('#fscroll'); if (e.target.closest('#azstrip')) { fd = null; return; } fd = { y: e.touches[0].clientY, x: e.touches[0].clientX, top: !sc || sc.scrollTop <= 0 || sc.classList.contains('rev') }; }, { passive: true });
+    $('#find').addEventListener('touchmove', e => { if (!fd || !fd.top) return; const dy = e.touches[0].clientY - fd.y; if (dy < -6 || Math.abs(e.touches[0].clientX - fd.x) > 24) fd = null; else fd.dy = dy; }, { passive: true });
+    $('#find').addEventListener('touchend', () => { if (fd && fd.dy > 90 && !$('#fscroll').classList.contains('rev')) { quietUntil = performance.now() + 300; exitFind(); } fd = null; });
     // Results and the A–Z grid keep the keyboard up when tapped.
     $('#find').addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
     // Long-press in the results opens the app's options.
