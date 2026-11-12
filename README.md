@@ -26,7 +26,7 @@ Release: Actions → **Release APK** → **Run workflow** builds the APK and pub
 
 ## Status
 
-Page One bar 1.0, Android app 0.3.0. One bar uses the same bridge and the same saved data as v0.4 (spaces, pins, passport, notes, reminders), so no new APK is needed. **Updates:** type `.update` in the bar (or You → Check for updates). It installs the latest release over the old app (Android asks you to confirm) and pulls the newest page from `main`, which shows with no install at all; the app also fetches a newer page by itself every few hours and switches next time you come home. A downloaded page that fails to start is thrown away automatically; `.update reset` goes back to the page built into the app. Releases are signed with the permanent key in the `SB_KEYSTORE_B64` secret (backup: Proton Drive `Claude Things/Setup/keys/`).
+Page One bar 1.1, Android app 0.3.0. One bar uses the same bridge and the same saved data as v0.4 (spaces, pins, passport, notes, reminders), so no new APK is needed. **Updates:** type `.update` in the bar (or You → Check for updates). It installs the latest release over the old app (Android asks you to confirm) and pulls the newest page from `main`, which shows with no install at all; the app also fetches a newer page by itself every few hours and switches next time you come home. A downloaded page that fails to start is thrown away automatically; `.update reset` goes back to the page built into the app. Releases are signed with the permanent key in the `SB_KEYSTORE_B64` secret (backup: Proton Drive `Claude Things/Setup/keys/`).
 
 ## Docs
 
