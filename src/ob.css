@@ -284,6 +284,9 @@ img{display:block}
 .ph .mono{font-size:12.5px;color:var(--brass)}
 .perm{border-radius:16px;background:var(--raise);padding:14px;margin:4px 0 8px;font-size:14px;color:var(--ink-2)}
 .perm b{display:block;color:var(--ink);font-size:15px;margin-bottom:2px}
+.cv,.ag,.ag-acts{transition:transform .25s var(--glide),opacity .25s,height .25s .05s,padding .25s .05s,margin .25s .05s}
+.cv.swiping,.ag.swiping{transition:none}
+.cleared{overflow:hidden;pointer-events:none}
 .earlier-tg{width:100%;height:44px;display:flex;align-items:center;gap:8px;color:var(--ink-3);font-size:13px}
 
 /* lists in sheets */

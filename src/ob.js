@@ -747,7 +747,7 @@
         const target = c.items.filter(n => n.live && n.canReply).sort((x, y) => y.time - x.time)[0];
         const lines = items.map(n => `<div class="cv-line">${c.group && n.person ? `<em>${esc(n.person)}:</em> ` : ''}${esc(n.text)}</div>`).join('') +
           sent.map(s => `<div class="cv-line me">${esc(s)}</div>`).join('');
-        return `<div class="cv${S.reply && convoKey(S.reply) === c.key ? ' replying' : ''}">${av(c.name, 'round')}<div class="cv-main"><div class="cv-head"><b>${esc(c.name)}</b><span>${esc(a ? a.label : '')}</span><time>${esc(ago(c.last.time))}</time></div>${lines}` +
+        return `<div class="cv${S.reply && convoKey(S.reply) === c.key ? ' replying' : ''}" data-swipe="cv-done" data-sv="${esc(c.key)}">${av(c.name, 'round')}<div class="cv-main"><div class="cv-head"><b>${esc(c.name)}</b><span>${esc(a ? a.label : '')}</span><time>${esc(ago(c.last.time))}</time></div>${lines}` +
           `<div class="btns">${target ? `<button class="bt" data-act="reply" data-v="${esc(target.id)}">${ic('reply')}Reply</button>` : ''}` +
           `<button class="bt" data-act="nopen" data-v="${esc(c.last.id)}">Open</button><button class="bt ghost" data-act="cv-done" data-v="${esc(c.key)}">Done</button></div></div></div>`;
       }).join('');
@@ -756,10 +756,10 @@
       h += `<div class="sec-h">Everything else <span class="n">${os.reduce((s, g) => s + g.items.length, 0)}</span></div>`;
       h += os.map(g => {
         const a = appPkg(g.pkg), n = g.last, acts = arr(n.actions).slice(0, 2);
-        return `<div class="ag"><span class="gi">${appIco(a)}</span><button class="gm" data-act="nopen" data-v="${esc(n.id)}" style="text-align:left"><div class="cv-head"><b>${esc(a ? a.label : n.pkg)}</b>${g.items.length > 1 ? `<span>${g.items.length}</span>` : ''}<time>${esc(ago(n.time))}</time></div>` +
+        return `<div class="ag" data-swipe="ag-done" data-sv="${esc(g.pkg)}"><span class="gi">${appIco(a)}</span><button class="gm" data-act="nopen" data-v="${esc(n.id)}" style="text-align:left"><div class="cv-head"><b>${esc(a ? a.label : n.pkg)}</b>${g.items.length > 1 ? `<span>${g.items.length}</span>` : ''}<time>${esc(ago(n.time))}</time></div>` +
           `<div class="cv-line" style="color:var(--ink)">${esc(n.title)}</div>${n.text ? `<div class="cv-line">${esc(n.text)}</div>` : ''}</button>` +
           `<button class="x" data-act="ag-done" data-v="${esc(g.pkg)}" aria-label="Clear ${esc(a ? a.label : '')}">${ic('x', 'sm')}</button></div>` +
-          (acts.length ? `<div class="btns" style="margin:-4px 0 8px 44px">${acts.map((t, i) => `<button class="bt" data-act="naction" data-v="${esc(n.id)}" data-i="${i}">${esc(t)}</button>`).join('')}</div>` : '');
+          (acts.length ? `<div class="btns ag-acts" style="margin:-4px 0 8px 44px">${acts.map((t, i) => `<button class="bt" data-act="naction" data-v="${esc(n.id)}" data-i="${i}">${esc(t)}</button>`).join('')}</div>` : '');
       }).join('');
     }
     // Your phone: timers, reminders and the last thing the phone told you.
@@ -1175,6 +1175,43 @@
     el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
   }
 
+  /* swipe a notification left to clear it */
+  function swipeToClear(box) {
+    let g = null;
+    box.addEventListener('touchstart', e => {
+      const row = e.target.closest('[data-swipe]');
+      g = row ? { row, x: e.touches[0].clientX, y: e.touches[0].clientY, t: performance.now(), on: false, dx: 0 } : null;
+    }, { passive: true });
+    box.addEventListener('touchmove', e => {
+      if (!g) return;
+      const dx = e.touches[0].clientX - g.x, dy = e.touches[0].clientY - g.y;
+      if (!g.on) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { g = null; return; }
+        if (dx > -10 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+        g.on = true; g.row.classList.add('swiping');
+      }
+      e.preventDefault(); e.stopPropagation();
+      g.dx = Math.min(0, dx);
+      g.row.style.transform = `translateX(${g.dx}px)`;
+      g.row.style.opacity = String(Math.max(0.15, 1 + g.dx / g.row.offsetWidth));
+    }, { passive: false });
+    const end = () => {
+      if (!g || !g.on) { g = null; return; }
+      const k = g; g = null; quietUntil = performance.now() + 350;
+      const v = k.dx / Math.max(1, performance.now() - k.t);
+      k.row.classList.remove('swiping');
+      if (k.dx < -k.row.offsetWidth * 0.33 || v < -0.6) {
+        const acts = k.row.nextElementSibling && k.row.nextElementSibling.classList.contains('ag-acts') ? k.row.nextElementSibling : null;
+        for (const el of [k.row, acts]) if (el) { el.style.height = el.offsetHeight + 'px'; el.classList.add('cleared'); }
+        void k.row.offsetWidth;
+        for (const el of [k.row, acts]) if (el) { el.style.transform = 'translateX(-110%)'; el.style.opacity = '0'; el.style.height = '0px'; el.style.paddingTop = el.style.paddingBottom = '0px'; el.style.marginTop = el.style.marginBottom = '0px'; }
+        buzz();
+        setTimeout(() => ACT[k.row.dataset.swipe](k.row.dataset.sv), 260);
+      } else { k.row.style.transform = ''; k.row.style.opacity = ''; }
+    };
+    box.addEventListener('touchend', end); box.addEventListener('touchcancel', end);
+  }
+
   /* hold an app: options; hold and drag: put it where you want */
   function holdTile(g) { g.held = true; g.tile.classList.add('lift'); buzz('long'); }
   function startDrag(g, t) {
@@ -1222,6 +1259,7 @@
     const app = $('#app');
     app.addEventListener('click', onClick);
     homeGestures($('#stage')); homeGestures($('#bar')); homeGestures($('#dots')); homeGestures($('#top'));
+    swipeToClear($('#sheetBody')); swipeToClear($('#sideBody'));
     pullToClose($('#sheet'), () => $('#sheetBody'), () => closeSheet());
     pullToClose($('#player'), () => $('#player .pl-body'), closePlayer);
     // Pull down at the top of the drawer (or the results) to put it away.

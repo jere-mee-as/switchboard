@@ -6,7 +6,7 @@ Switchboard is an Android launcher, separate from JRL Launcher in every way. Pag
 
 - **Tap the bar** to type to your phone: apps, favorite people, spaces, notes, sums, the web, Maps, and `.` commands (a period; a slash still works). With nothing typed it shows every app A–Z.
 - **Swipe sideways** for the next space; each space is a page with what's waiting from its apps. One swipe right of Home is **Recent**: the apps you opened lately, plus Settings, My Files, Wi-Fi, Bluetooth, Flashlight and Do Not Disturb. **Slide along the dots** to glide straight to any page (no hold needed; a tap on the space name opens Spaces).
-- **Pull up** (or pull down from the date) for everything waiting: people first (reply from the bar), then everything else by app, then timers and reminders.
+- **Pull up** (or pull down from the date) for everything waiting: people first (reply from the bar; swipe one left to clear it), then everything else by app, then timers and reminders.
 - **Pull down** on the apps for every app, A–Z (no keyboard; pull down again to put it away). **Pull down from the date** at the top for what's waiting, dropped in from above (the phone's own shade is the Phone button in there, or `.shade`). App names under icons are off by default (You → App names, or `.names`).
 - **Hold an app** for its options; hold and drag to reorder.
 - Unfolded, what's waiting sits beside home.
@@ -26,7 +26,7 @@ Release: Actions → **Release APK** → **Run workflow** builds the APK and pub
 
 ## Status
 
-Page One bar 1.4, Android app 0.3.0. One bar uses the same bridge and the same saved data as v0.4 (spaces, pins, passport, notes, reminders), so no new APK is needed. **Updates:** type `.update` in the bar (or You → Check for updates). It installs the latest release over the old app (Android asks you to confirm) and pulls the newest page from `main`, which shows with no install at all; the app also fetches a newer page by itself every few hours and switches next time you come home. A downloaded page that fails to start is thrown away automatically; `.update reset` goes back to the page built into the app. Releases are signed with the permanent key in the `SB_KEYSTORE_B64` secret (backup: Proton Drive `Claude Things/Setup/keys/`).
+Page One bar 1.5, Android app 0.3.0. One bar uses the same bridge and the same saved data as v0.4 (spaces, pins, passport, notes, reminders), so no new APK is needed. **Updates:** type `.update` in the bar (or You → Check for updates). It installs the latest release over the old app (Android asks you to confirm) and pulls the newest page from `main`, which shows with no install at all; the app also fetches a newer page by itself every few hours and switches next time you come home. A downloaded page that fails to start is thrown away automatically; `.update reset` goes back to the page built into the app. Releases are signed with the permanent key in the `SB_KEYSTORE_B64` secret (backup: Proton Drive `Claude Things/Setup/keys/`).
 
 ## Docs
 
