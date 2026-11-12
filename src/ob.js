@@ -625,6 +625,13 @@
     say('', Object.assign({ id: 'mate' }, mateAnswer()));
   }, { group: 'Fun' });
   // Launcher
+  def('wallpaper', '[none · auto · dawn · day · dusk · night] [clear · rain · storm]', 'Wallpaper', r => {
+    const w = norm(r).split(/\s+/).filter(Boolean);
+    if (!w.length) return wallpaperSheet();
+    if (w[0] === 'none' || w[0] === 'off') { D.wall = null; save(); applyWall(); return toast('No wallpaper'); }
+    const t = w.find(x => x === 'auto' || SKY_T.includes(x)) || (D.wall && D.wall.sky) || 'auto', x = w.find(y => SKY_W.includes(y)) || (D.wall && D.wall.weather) || 'clear';
+    D.wall = { kind: 'sky', sky: t, weather: x, dim: (D.wall && D.wall.dim) || 0 }; save(); applyWall(); toast('Wallpaper: ' + (t === 'auto' ? 'follows the time of day' : t) + ', ' + x);
+  }, { group: 'Launcher', alias: ['wall', 'sky'], sug: r => (/\s/.test(r) ? [] : optSug('wallpaper', ['auto', 'dawn', 'day', 'dusk', 'night', 'none'], r)) });
   def('names', '[on · off]', 'App names under icons', r => { D.fun.labels = r ? /^(on|1|yes)$/i.test(r) : !D.fun.labels; save(); applySkin(); toast(D.fun.labels ? 'App names on' : 'App names off'); }, { group: 'Launcher', alias: ['labels'] });
   def('theme', '<auto · dark · black · light>', 'Appearance', r => {
     const k = norm(r);
@@ -701,12 +708,187 @@
   }
   function applySkin() {
     const app = $('#app');
-    if (D.skin && D.skin !== 'auto') app.dataset.skin = D.skin; else delete app.dataset.skin;
+    const w = wallNow();
+    if (D.skin && D.skin !== 'auto') app.dataset.skin = D.skin;
+    else if (w) app.dataset.skin = w.dark ? 'dark' : 'light';   // Auto + wallpaper: text that reads on it
+    else delete app.dataset.skin;
     app.dataset.motion = D.fun.motion || 'calm';
     app.classList.toggle('nolabels', !D.fun.labels);
     const a = ACCENTS[D.fun.accent], props = ['--brass', '--brass-ink', '--lamp', '--lamp-glow'];
     if (a && D.fun.accent !== 'brass') [a[0], a[1], a[0], a[0] + '80'].forEach((v, i) => app.style.setProperty(props[i], v));
     else props.forEach(p => app.style.removeProperty(p));
+  }
+
+  /* ---------- wallpaper ---------- */
+  // The jere.ing sky (12 stills, built into the page) or your own photo. Stills only: a moving sky would redraw
+  // the home screen all the time and cost battery. "Follow the time of day" swaps the still at dawn, day, dusk
+  // and night, from sunrise and sunset, which costs nothing.
+  const WALLS = window.SB_WALLS || {}, WALL_THUMBS = window.SB_WALL_THUMBS || {};
+  const SKY_T = ['dawn', 'day', 'dusk', 'night'], SKY_W = ['clear', 'rain', 'storm'];
+  const HERE = { lat: 38.96, lon: -77.36 };   // Reston, VA: close enough for sunrise and sunset
+  function sunTimes(d) {
+    const rad = Math.PI / 180, start = new Date(d.getFullYear(), 0, 0), n = Math.floor((d - start) / DAY);
+    const g = 2 * Math.PI / 365 * (n - 1);
+    const eq = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+    const dec = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g);
+    const ha = Math.acos(Math.cos(90.833 * rad) / (Math.cos(HERE.lat * rad) * Math.cos(dec)) - Math.tan(HERE.lat * rad) * Math.tan(dec)) / rad;
+    const mid = new Date(d); mid.setUTCHours(0, 0, 0, 0);
+    const at = m => mid.getTime() + m * MIN;
+    return { rise: at(720 - 4 * (HERE.lon + ha) - eq), set: at(720 - 4 * (HERE.lon - ha) - eq) };
+  }
+  function skyNow() {
+    const t = now(), s = sunTimes(new Date());
+    if (t < s.rise - 45 * MIN || t > s.set + 45 * MIN) return 'night';
+    if (t < s.rise + 60 * MIN) return 'dawn';
+    if (t > s.set - 60 * MIN) return 'dusk';
+    return 'day';
+  }
+  // What's on the wall right now: { src, dark, css }
+  function wallNow() {
+    const w = D.wall;
+    if (!w) return null;
+    if (w.kind === 'sky') { const id = (w.sky === 'auto' ? skyNow() : w.sky) + '-' + (w.weather || 'clear'), x = WALLS[id]; return x ? { id, src: x.src, dark: x.dark } : null; }
+    if (w.kind === 'photo' && PIC.url.wall) return { id: 'photo', dark: !!w.dark, css: picCss('wall', $('#app').clientWidth || innerWidth, $('#app').clientHeight || innerHeight) };
+    return null;
+  }
+  let wallShown = '';
+  function applyWall() {
+    const w = wallNow(), el = $('#wall'), app = $('#app');
+    app.classList.toggle('has-wall', !!w);
+    $('#wallVeil').style.opacity = w ? String((D.wall.dim || 0) / 100) : '0';
+    const key = w ? w.id + '|' + (w.css || '') : '';
+    if (key !== wallShown) {
+      wallShown = key;
+      el.removeAttribute('style');
+      if (w && w.src) el.style.backgroundImage = `url('${w.src}')`;
+      else if (w && w.css) el.style.cssText = w.css;
+    }
+    applySkin();
+  }
+  function wallpaperSheet() {
+    const w = D.wall || {}, sky = w.kind === 'sky', auto = sky && w.sky === 'auto', weather = w.weather || 'clear';
+    const cur = sky ? (auto ? '' : w.sky + '-' + weather) : '';
+    let h = head('Wallpaper', `<button class="bt pri" data-act="sheet-close">Done</button>`);
+    h += `<div class="sec-h">The jere.ing sky</div>` +
+      `<button class="row" data-act="wall-auto"><span class="ri">${ic('clock', 'sm')}</span><span class="rt"><b>Follow the time of day</b><small>Dawn, day, dusk and night, from sunrise and sunset${auto ? ' · now ' + skyNow() : ''}</small></span><span class="toggle ${auto ? 'on' : ''}"></span></button>` +
+      `<div class="seg" style="margin:6px 0 12px">${SKY_W.map(x => `<button class="${sky && weather === x ? 'on' : ''}" data-act="wall-weather" data-v="${x}">${x[0].toUpperCase() + x.slice(1)}</button>`).join('')}</div>` +
+      `<div class="wgrid"><span></span>${SKY_W.map(x => `<span class="wcol">${x}</span>`).join('')}` +
+      SKY_T.map(t => `<span class="wrow">${t}</span>` + SKY_W.map(x => { const id = t + '-' + x; return `<button class="wthumb ${cur === id ? 'on' : ''}" data-act="wall-sky" data-v="${id}" aria-label="${t} ${x}" style="background-image:url('${WALL_THUMBS[id] || ''}')"></button>`; }).join('')).join('') + '</div>';
+    h += `<div class="sec-h">Your photo</div>` +
+      `<button class="row" data-act="pic-pick" data-v="wall"><span class="ri">${ic('plus', 'sm')}</span><span class="rt"><b>${PIC.url.wall ? 'Choose another photo' : 'Choose a photo'}</b><small>Then move and zoom it to fit</small></span></button>` +
+      (PIC.url.wall ? `<button class="row ${w.kind === 'photo' ? 'on' : ''}" data-act="wall-photo"><span class="ri" style="${picCss('wall', 34, 34)}"></span><span class="rt"><b>${w.kind === 'photo' ? 'Your photo is on' : 'Use your photo'}</b></span></button>` +
+        `<button class="row" data-act="pic-crop" data-v="wall"><span class="ri">${ic('sliders', 'sm')}</span><span class="rt"><b>Move and zoom</b></span></button>` : '');
+    if (D.wall) h += `<div class="sec-h">Soften</div><div class="rangerow"><span>None</span><input id="wallDim" type="range" min="0" max="70" step="5" value="${w.dim || 0}" aria-label="Soften the wallpaper"><span>More</span></div>` +
+      `<div class="quiet">Washes the wallpaper toward the theme so text reads more easily.</div>`;
+    h += `<div class="btns" style="margin-top:16px"><button class="bt ${D.wall ? '' : 'pri'}" data-act="wall-none">No wallpaper</button></div>`;
+    if (S.sheet === 'wall') refreshSheet(h); else openSheet('wall', h);
+    const r = $('#wallDim'); if (r) r.addEventListener('input', () => { D.wall.dim = +r.value; save(); applyWall(); });
+  }
+  function setWall(w) { D.wall = w ? Object.assign({ dim: (D.wall && D.wall.dim) || 0 }, w) : null; save(); applyWall(); wallpaperSheet(); }
+
+  /* ---------- your pictures: profile picture, banner, wallpaper photo ---------- */
+  const BANNER_PX = 84;
+  const bannerW = () => Math.min($('#app').clientWidth, 640) - 36;
+  function pickPic(kind) {
+    const i = document.createElement('input');
+    i.type = 'file'; i.accept = 'image/*';
+    i.onchange = () => { const f = i.files && i.files[0]; if (f) cropPic(kind, f, null); };
+    i.click();
+  }
+  // Move and zoom: drag to move, pinch (or the slider) to zoom, inside the exact frame it will fill.
+  function cropPic(kind, blob, meta) {
+    const url = blob ? URL.createObjectURL(blob) : PIC.url[kind];
+    if (!url) return toast('Choose a picture first');
+    closeSheet();
+    const img = new Image();
+    img.onload = () => {
+      const app = $('#app'), w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+      const st = meta ? { cx: meta.cx, cy: meta.cy, z: meta.z } : { cx: 0.5, cy: 0.5, z: 1 };
+      const title = kind === 'banner' ? 'Banner' : kind === 'wall' ? 'Wallpaper' : 'Profile picture';
+      const el = document.createElement('div');
+      el.className = 'cropper'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Move and zoom');
+      el.innerHTML = `<div class="cr-head"><button class="bt" data-cr="cancel">Cancel</button><b>${title}</b><button class="bt pri" data-cr="save">Save</button></div>` +
+        `<div class="cr-stage"><img alt="" draggable="false"><div class="cr-frame cr-${kind}"></div></div>` +
+        `<div class="cr-foot">${ic('search', 'sm')}<input type="range" min="1" max="5" step="0.01" value="${st.z}" aria-label="Zoom"><span class="cr-tip">Drag to move · pinch or slide to zoom</span></div>`;
+      app.appendChild(el);
+      const stage = el.querySelector('.cr-stage'), im = el.querySelector('img'), fr = el.querySelector('.cr-frame'), zr = el.querySelector('input');
+      im.src = url;
+      let F;
+      const layout = () => {
+        const SW = stage.clientWidth, SH = stage.clientHeight;
+        let fw, fh;
+        if (kind === 'banner') { fw = Math.min(SW - 24, 560); fh = fw * BANNER_PX / bannerW(); }
+        else if (kind === 'wall') { const r = app.clientHeight / app.clientWidth; fh = Math.min(SH - 40, (SW - 40) * r); fw = fh / r; }
+        else { fw = fh = Math.min(SW - 80, SH - 80, 300); }
+        F = { x: (SW - fw) / 2, y: (SH - fh) / 2, w: fw, h: fh };
+        Object.assign(fr.style, { left: F.x + 'px', top: F.y + 'px', width: fw + 'px', height: fh + 'px' });
+        draw();
+      };
+      const clamp = () => {
+        const s = Math.max(F.w / w, F.h / h) * st.z, hx = F.w / (2 * w * s), hy = F.h / (2 * h * s);
+        st.cx = Math.min(1 - hx, Math.max(hx, st.cx)); st.cy = Math.min(1 - hy, Math.max(hy, st.cy));
+        return s;
+      };
+      const draw = () => {
+        const s = clamp();
+        Object.assign(im.style, { width: w * s + 'px', height: h * s + 'px', left: F.x + F.w / 2 - st.cx * w * s + 'px', top: F.y + F.h / 2 - st.cy * h * s + 'px' });
+        zr.value = st.z;
+      };
+      const P = new Map(); let pinch = null;
+      stage.addEventListener('pointerdown', e => { stage.setPointerCapture(e.pointerId); P.set(e.pointerId, [e.clientX, e.clientY]); if (P.size === 2) { const [a, b] = [...P.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: st.z }; } });
+      stage.addEventListener('pointermove', e => {
+        const prev = P.get(e.pointerId); if (!prev) return;
+        const cur = [e.clientX, e.clientY]; P.set(e.pointerId, cur);
+        if (P.size === 1) { const s = Math.max(F.w / w, F.h / h) * st.z; st.cx -= (cur[0] - prev[0]) / (w * s); st.cy -= (cur[1] - prev[1]) / (h * s); }
+        else if (P.size === 2 && pinch) { const [a, b] = [...P.values()]; st.z = Math.min(5, Math.max(1, pinch.z * Math.hypot(a[0] - b[0], a[1] - b[1]) / Math.max(1, pinch.d))); }
+        draw();
+      });
+      const up = e => { P.delete(e.pointerId); if (P.size < 2) pinch = null; };
+      stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+      stage.addEventListener('wheel', e => { e.preventDefault(); st.z = Math.min(5, Math.max(1, st.z * (e.deltaY < 0 ? 1.08 : 0.93))); draw(); }, { passive: false });
+      zr.addEventListener('input', () => { st.z = +zr.value; draw(); });
+      const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 220); S.cropping = null; };
+      S.cropping = close;
+      el.addEventListener('click', async e => {
+        const b = e.target.closest('[data-cr]'); if (!b) return;
+        if (b.dataset.cr === 'cancel') { if (blob) URL.revokeObjectURL(url); close(); return kind === 'wall' ? wallpaperSheet() : youSheet(); }
+        clamp();
+        if (blob) {
+          try { await picIO(kind, blob); } catch (err) { toast("Couldn't save that picture"); return close(); }
+          if (PIC.url[kind] && PIC.url[kind] !== url) URL.revokeObjectURL(PIC.url[kind]);
+          PIC.url[kind] = url;
+        }
+        D.pics = Object.assign({}, D.pics, { [kind]: { cx: st.cx, cy: st.cy, z: st.z, w, h } });
+        if (kind === 'wall') D.wall = { kind: 'photo', dark: lum(img, st, F) < 0.5, dim: D.wall && D.wall.kind === 'photo' ? (D.wall.dim || 0) : 25 };   // photos start a little softened
+        save(); close(); renderAll(); applyWall();
+        toast(kind === 'banner' ? 'Banner set' : kind === 'wall' ? 'Wallpaper set' : 'Profile picture set');
+        if (kind === 'wall') wallpaperSheet(); else youSheet();
+      });
+      requestAnimationFrame(layout);
+    };
+    img.onerror = () => toast("Couldn't open that picture");
+    img.src = url;
+  }
+  // How light the chosen area is (0–1), to pick light or dark text over it.
+  function lum(img, st, F) {
+    try {
+      const c = document.createElement('canvas'); c.width = c.height = 12;
+      const g = c.getContext('2d'), w = img.naturalWidth, h = img.naturalHeight, s = Math.max(F.w / w, F.h / h) * st.z;
+      const sw = F.w / s, sh = F.h / s;
+      g.drawImage(img, st.cx * w - sw / 2, st.cy * h - sh / 2, sw, sh, 0, 0, 12, 12);
+      const d = g.getImageData(0, 0, 12, 12).data; let t = 0;
+      for (let i = 0; i < d.length; i += 4) t += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
+      return t / (d.length / 4);
+    } catch (e) { return 0.3; }
+  }
+  function picSheet(kind) {
+    const has = !!(D.pics && D.pics[kind] && PIC.url[kind]), isB = kind === 'banner';
+    let h = head(isB ? 'Banner' : 'Profile picture');
+    h += `<button class="row" data-act="pic-pick" data-v="${kind}"><span class="ri">${ic('plus', 'sm')}</span><span class="rt"><b>${has ? 'Choose a new picture' : 'Choose a picture'}</b><small>Any picture or GIF, then move and zoom it</small></span></button>` +
+      (has ? `<button class="row" data-act="pic-crop" data-v="${kind}"><span class="ri">${ic('sliders', 'sm')}</span><span class="rt"><b>Move and zoom</b><small>Line up what shows</small></span></button>` +
+        `<button class="row" data-act="pic-del" data-v="${kind}"><span class="ri" style="color:var(--call)">${ic('trash', 'sm')}</span><span class="rt"><b>Remove</b><small>${isB ? 'Back to the accent color' : 'Back to your initials'}</small></span></button>` : '');
+    h += `<div class="btns" style="margin-top:12px"><button class="bt ghost" data-act="you">${ic('back')}Back</button></div>`;
+    openSheet('pic', h);
   }
 
   /* ---------- sheets ---------- */
@@ -883,7 +1065,7 @@
   function helpSheet() {
     const groups = new Map();
     for (const c of CMDS) { if (c.hidden) continue; if (!groups.has(c.group)) groups.set(c.group, []); groups.get(c.group).push(c); }
-    let h = head('Commands') + '<div class="quiet" style="padding-top:0">Type a period ( . ) in the bar for commands. Anything else you type finds apps, people, sums and the web.</div><div class="cmdlist">';
+    let h = head('Commands') + '<div class="quiet" style="padding:0 2px 6px">Type a period ( . ) in the bar for commands. Anything else you type finds apps, people, sums and the web.</div><div class="cmdlist">';
     for (const [g, list] of groups) h += `<div class="sec-h">${esc(g)}</div>` + list.map(c => `<button class="cmdrow" data-act="fill" data-v=".${esc(c.n)}${c.a ? ' ' : ''}"><code>.${esc(c.n)}</code><span>${esc(c.d)}</span></button>`).join('');
     openSheet('help', h + '</div>');
   }
@@ -894,14 +1076,14 @@
   function youSheet() {
     const p = D.passport, b = S.battery || {}, dv = S.device || {}, pm = S.perms || {};
     const links = arr(p.links).filter(l => l.v);
-    let h = `<div class="you-card"><div class="you-banner" style="${picCss('banner', 3, 1) || ''}"></div><div class="you-id">${meAv()}<h3>${esc(p.name)}</h3>${p.note ? `<p>${esc(p.note)}</p>` : ''}${p.status ? `<span class="status">${esc(p.status)}</span>` : ''}` +
+    let h = `<div class="you-card"><button class="you-banner" data-act="pic-menu" data-v="banner" aria-label="Change banner" style="${picCss('banner', bannerW(), BANNER_PX) || ''}"><span class="you-edit">${ic('camera', 'xs')}</span></button><div class="you-id"><button class="you-av" data-act="pic-menu" data-v="avatar" aria-label="Change profile picture">${meAv()}<span class="cam">${ic('camera', 'xs')}</span></button><h3>${esc(p.name)}</h3>${p.note ? `<p>${esc(p.note)}</p>` : ''}${p.status ? `<span class="status">${esc(p.status)}</span>` : ''}` +
       `<div class="btns"><button class="bt pri" data-act="qr" data-v="-1">${ic('qr')}Show my code</button><button class="bt" data-act="pp-edit">${ic('edit')}Edit</button></div></div></div>`;
     if (links.length) h += `<div class="sec-h">Links</div>` + links.map((l, i) => { const d = linkDef(l), u = linkUrl(l); return `<div style="display:flex;align-items:center;gap:4px"><button class="row" data-act="${u ? 'url' : 'copy'}" data-v="${esc(u || l.v)}"><span class="ri">${ic(d.i, 'sm')}</span><span class="rt"><b>${esc(linkShow(l))}</b><small>${esc(linkName(l))}${u ? '' : ' · tap to copy'}</small></span></button><button class="more" data-act="qr" data-v="${i}" aria-label="Code for ${esc(linkName(l))}">${ic('qr', 'sm')}</button></div>`; }).join('');
     h += `<div class="sec-h">Phone</div>` +
       `<button class="row" data-act="cmd" data-v=".dnd"><span class="ri">${ic('moon', 'sm')}</span><span class="rt"><b>Do Not Disturb</b></span><span class="toggle ${D.dnd ? 'on' : ''}"></span></button>` +
       `<button class="row" data-act="cmd" data-v=".flash"><span class="ri">${ic('bolt', 'sm')}</span><span class="rt"><b>Flashlight</b></span><span class="toggle ${S.torch ? 'on' : ''}"></span></button>` +
       `<div class="row"><span class="ri">${ic('battery', 'sm')}</span><span class="rt"><b>${b.pct != null ? b.pct + '%' : '–'}${b.charging ? ', charging' : ''}</b><small>${esc(dv.model || '')}${dv.android ? ' · Android ' + esc(dv.android) : ''}${dv.total ? ' · ' + gb(dv.free) + ' free of ' + gb(dv.total) : ''}</small></span></div>`;
-    h += `<div class="sec-h">Launcher</div><button class="row" data-act="labels"><span class="ri">${ic('grid', 'sm')}</span><span class="rt"><b>App names on Home and spaces</b></span><span class="toggle ${D.fun.labels ? 'on' : ''}"></span></button><div class="seg">${[['auto', 'Auto'], ['dark', 'Dark'], ['black', 'Black'], ['light', 'Light']].map(([v, l]) => `<button class="${(D.skin || 'auto') === v ? 'on' : ''}" data-act="skin" data-v="${v}">${l}</button>`).join('')}</div>` +
+    h += `<div class="sec-h">Launcher</div><button class="row" data-act="wallpaper"><span class="ri" style="${wallNow() && wallNow().src ? `background:url('${(WALL_THUMBS[wallNow().id] || '')}') center/cover` : (wallNow() ? picCss('wall', 34, 34) : '')}">${wallNow() ? '' : ic('image', 'sm')}</span><span class="rt"><b>Wallpaper</b><small>${D.wall ? (D.wall.kind === 'photo' ? 'Your photo' : 'jere.ing sky · ' + (D.wall.sky === 'auto' ? 'follows the time of day' : D.wall.sky) + ' · ' + (D.wall.weather || 'clear')) : 'None'}</small></span></button><button class="row" data-act="labels"><span class="ri">${ic('grid', 'sm')}</span><span class="rt"><b>App names on Home and spaces</b></span><span class="toggle ${D.fun.labels ? 'on' : ''}"></span></button><div class="seg">${[['auto', 'Auto'], ['dark', 'Dark'], ['black', 'Black'], ['light', 'Light']].map(([v, l]) => `<button class="${(D.skin || 'auto') === v ? 'on' : ''}" data-act="skin" data-v="${v}">${l}</button>`).join('')}</div>` +
       `<div class="swatches" style="margin-top:10px">${Object.entries(ACCENTS).map(([k, a]) => `<button class="sw ${D.fun.accent === k ? 'on' : ''}" style="background:${a[0]}" data-act="accent" data-v="${k}" aria-label="${a[2]}"></button>`).join('')}</div>`;
     const need = [['notif', 'Notification access', 'to see and answer what comes in'], ['calendar', 'Calendar', 'for your week'], ['contacts', 'Contacts', 'to call and text favorites'], ['dnd', 'Do Not Disturb access', 'for the moon toggle']].filter(([k]) => pm[k] === false);
     if (pm.isHome === false) h += `<button class="row" data-act="set-home"><span class="ri" style="color:var(--brass)">${ic('home', 'sm')}</span><span class="rt"><b>Make Switchboard your home screen</b></span></button>`;
@@ -1012,6 +1194,21 @@
     'sheet-close': () => closeSheet(),
     scrim: () => { if (S.player) closePlayer(); else closeSheet(); },
     skin: v => { D.skin = v; save(); applySkin(); youSheet(); },
+    wallpaper: () => wallpaperSheet(),
+    'wall-auto': () => setWall(D.wall && D.wall.kind === 'sky' && D.wall.sky === 'auto' ? { kind: 'sky', sky: skyNow(), weather: D.wall.weather || 'clear' } : { kind: 'sky', sky: 'auto', weather: (D.wall && D.wall.weather) || 'clear' }),
+    'wall-weather': v => setWall({ kind: 'sky', sky: D.wall && D.wall.kind === 'sky' ? D.wall.sky : 'auto', weather: v }),
+    'wall-sky': v => { const [t, x] = v.split('-'); setWall({ kind: 'sky', sky: t, weather: x }); },
+    'wall-photo': () => setWall({ kind: 'photo', dark: D.wall && D.wall.kind === 'photo' ? D.wall.dark : (D.pics && D.pics.wallDark) || false }),
+    'wall-none': () => setWall(null),
+    'pic-menu': v => picSheet(v),
+    'pic-pick': v => pickPic(v),
+    'pic-crop': v => cropPic(v, null, D.pics && D.pics[v]),
+    'pic-del': async v => {
+      try { await picIO(v, null); } catch (e) { /* ignore */ }
+      if (PIC.url[v]) URL.revokeObjectURL(PIC.url[v]); delete PIC.url[v];
+      if (D.pics) delete D.pics[v]; if (v === 'wall' && D.wall && D.wall.kind === 'photo') D.wall = null;
+      save(); renderAll(); applyWall(); toast('Removed'); youSheet();
+    },
     labels: () => { D.fun.labels = !D.fun.labels; save(); applySkin(); youSheet(); },
     accent: v => { D.fun.accent = v; save(); applySkin(); youSheet(); },
     qr: v => qrSheet(+v),
@@ -1288,7 +1485,7 @@
     $('#bar').addEventListener('submit', e => { e.preventDefault(); if (S.reply) sendReply(inp.value); else runTop(); });
     inp.addEventListener('keydown', e => { if (e.key === 'Escape') back(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.activeElement !== inp) back(); if (!S.finding && !S.sheet && document.activeElement !== inp) { if (e.key === 'ArrowRight') goPage(S.page + 1); if (e.key === 'ArrowLeft') goPage(S.page - 1); } });
-    addEventListener('resize', () => { applyWide(); placeTrack(); });
+    addEventListener('resize', () => { applyWide(); placeTrack(); wallShown = ''; applyWall(); });
     for (const el of [app, $('#home'), $('#stage')]) el.addEventListener('scroll', () => { if (el.scrollTop || el.scrollLeft) { el.scrollTop = 0; el.scrollLeft = 0; } });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { renderTop(); renderPages(); } });
   }
@@ -1300,6 +1497,7 @@
     renderSide(); renderBar(); placeTrack();
   }
   function back() {
+    if (S.cropping) return S.cropping();
     if (S.player) return closePlayer();
     if (S.sheet) return closeSheet();
     if (S.reply) return ACT['reply-cancel']();
@@ -1315,7 +1513,7 @@
   const refreshSoon = () => { clearTimeout(refreshT); refreshT = setTimeout(renderAll, 90); };
   function tick() {
     if (document.hidden) return;
-    checkReminders(); renderTop();
+    checkReminders(); renderTop(); applyWall();
     document.querySelectorAll('.page .glance').forEach((g, i) => { const p = pages()[i]; if (p) g.innerHTML = glanceHtml(p, i); });
     document.querySelectorAll('[data-countdown]').forEach(el => { const s = Math.round((+el.dataset.countdown - now()) / 1000); el.textContent = s > 0 ? fmtDur(s) : 'done'; });
   }
@@ -1352,14 +1550,14 @@
   function init() {
     loadAll();
     initPassport();
-    applySkin();
+    applyWall();
     wire();
     S.wide = !(innerWidth >= 700); applyWide();
     renderAll();
     checkReminders();
     setInterval(tick, 30000);
     setInterval(() => { if (!document.hidden) document.querySelectorAll('[data-countdown]').forEach(el => { const s = Math.round((+el.dataset.countdown - now()) / 1000); el.textContent = s > 0 ? fmtDur(s) : 'done'; }); }, 1000);
-    loadPics();
+    loadPics().then(applyWall, applyWall);
     if (B.ready) B.ready();   // tells the app this page started fine (a downloaded page that doesn't is rolled back)
     noteNewPage();
   }

@@ -18,7 +18,10 @@ def cut(start, end, inclusive_end=False):
 
 sprite = cut('<svg width="0" height="0" style="position:absolute" aria-hidden="true">', '</svg>', True)
 # One bar adds a Bluetooth icon
-sprite = sprite.replace('</svg>', '<symbol id="i-bluetooth" viewBox="0 0 24 24"><path d="M7 7l10 10-5 4V3l5 4L7 17"/></symbol></svg>')
+sprite = sprite.replace('</svg>', '<symbol id="i-bluetooth" viewBox="0 0 24 24"><path d="M7 7l10 10-5 4V3l5 4L7 17"/></symbol>'
+  '<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>'
+  '<symbol id="i-image" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M20 16l-5-5-9 8"/></symbol>'
+  '<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></symbol></svg>')
 mock = cut('<script>\n/* Preview bridge', '</script>', True)
 mock = mock.replace("copy: t => { try { navigator.clipboard.writeText(t); } catch (e) {} return true; },", "copy: t => { try { navigator.clipboard.writeText(t).catch(() => {}); } catch (e) {} return true; },")
 assert 'writeText(t).catch' in mock
@@ -32,6 +35,9 @@ spaces = cut('  /* ---------- spaces ---------- */', '  /* ---------- model ----
 search = cut('  /* ---------- search helpers ---------- */', '  /* ---------- small renderers ---------- */')
 parse = cut('  function parseDur(s) {', "  // Apps and people")
 pics = cut('  const PIC = { db: null, url: {} };', '  const bannerW')
+# One bar also keeps a wallpaper photo
+pics = pics.replace("for (const k of ['banner', 'avatar']) {", "for (const k of ['banner', 'avatar', 'wall']) {")
+assert "'wall']" in pics
 vcard = cut('  function vcard(p) {', "    return L.join('\\r\\n');\n  }", True)
 player = cut('  const mmss = ms =>', '  /* ---------- pages ---------- */')
 # One bar opens and closes the player its own way.
@@ -50,6 +56,26 @@ for k, v in [('UTIL', util), ('SPACES', spaces), ('SEARCH', search), ('PARSE', p
     js = js.replace(tag, v.rstrip('\n'))
 
 css = open('ob.css', encoding='utf-8').read() + pcss
+
+# The jere.ing sky stills (from jere-mee-as/site wallpapers/still/phone, 1080 wide WebP) and small previews, built in
+import base64, glob, io, json, os
+here = os.path.dirname(os.path.abspath(__file__))
+walls, thumbs = {}, {}
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+for f in sorted(glob.glob(os.path.join(here, 'walls', '*.webp'))):
+    n = os.path.basename(f)[:-5]
+    raw = open(f, 'rb').read()
+    walls[n] = {'src': 'data:image/webp;base64,' + base64.b64encode(raw).decode(), 'dark': n.startswith('night')}
+    if Image:
+        im = Image.open(io.BytesIO(raw)).convert('RGB'); th = im.resize((96, round(im.height * 96 / im.width)))
+        b = io.BytesIO(); th.save(b, 'WEBP', quality=55); thumbs[n] = 'data:image/webp;base64,' + base64.b64encode(b.getvalue()).decode()
+    else:
+        thumbs[n] = walls[n]['src']
+assert len(walls) == 12, len(walls)
+wall_js = '<script>\n/* The jere.ing sky: 12 wallpapers (dawn, day, dusk, night x clear, rain, storm) */\nwindow.SB_WALLS = ' + json.dumps(walls) + ';\nwindow.SB_WALL_THUMBS = ' + json.dumps(thumbs) + ';\n</script>'
 body = open('body.html', encoding='utf-8').read()
 
 html = f'''<!doctype html>
@@ -67,6 +93,7 @@ html = f'''<!doctype html>
 {body}
 {mock}
 {qr}
+{wall_js}
 <script>
 {js}</script>
 </body>

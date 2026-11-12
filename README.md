@@ -9,12 +9,14 @@ Switchboard is an Android launcher, separate from JRL Launcher in every way. Pag
 - **Pull up** (or pull down from the date) for everything waiting: people first (reply from the bar; swipe one left to clear it), then everything else by app, then timers and reminders.
 - **Pull down** on the apps for every app, A–Z (no keyboard; pull down again to start typing, and once more to put it away). **Pull down from the date** at the top for what's waiting, dropped in from above (the phone's own shade is the Phone button in there, or `.shade`). App names under icons are off by default (You → App names, or `.names`).
 - **Hold an app** for its options; hold and drag to reorder.
+- **Wallpaper** (You → Wallpaper, or `.wallpaper`): the jere.ing sky (dawn, day, dusk or night; clear, rain or storm), set to follow the time of day by sunrise and sunset, or your own photo, moved and zoomed to fit. Stills only, so they cost no battery. Theme on Auto picks light or dark text to suit the wallpaper.
+- **Profile picture and banner:** tap them in You to choose a picture and move and zoom it.
 - Unfolded, what's waiting sits beside home.
 
 | File | What |
 |---|---|
 | `index.html` | The page (One bar 1.0), built from `src/`. In a browser it runs on example data; in the app it runs on the phone through `window.SBNative` |
-| `src/` | One bar's own code (`ob.css`, `body.html`, `ob.js`) and `assemble.py`, which adds the pieces carried over from v0.4: `cd src && python3 assemble.py ../docs/archive/index-v0.4.html ../index.html`. `bridge-check.js ../index.html` drives the page against a strict fake of the phone bridge (argument counts from the Kotlin source, `arity.json`) |
+| `src/` | One bar's own code (and `walls/`, the 12 jere.ing sky stills as 1080-wide WebP, built into the page) (`ob.css`, `body.html`, `ob.js`) and `assemble.py`, which adds the pieces carried over from v0.4: `cd src && python3 assemble.py ../docs/archive/index-v0.4.html ../index.html`. `bridge-check.js ../index.html` drives the page against a strict fake of the phone bridge (argument counts from the Kotlin source, `arity.json`) |
 | `docs/archive/index-v0.4.html` | The previous page: the Discord-like layout (rail, channels, tabs) |
 | `android/` | The Android app (`ing.jere.switchboard`). See its README |
 
@@ -26,7 +28,7 @@ Release: Actions → **Release APK** → **Run workflow** builds the APK and pub
 
 ## Status
 
-Page One bar 1.6, Android app 0.3.0. One bar uses the same bridge and the same saved data as v0.4 (spaces, pins, passport, notes, reminders), so no new APK is needed. **Updates:** type `.update` in the bar (or You → Check for updates). It installs the latest release over the old app (Android asks you to confirm) and pulls the newest page from `main`, which shows with no install at all; the app also fetches a newer page by itself every few hours and switches next time you come home. A downloaded page that fails to start is thrown away automatically; `.update reset` goes back to the page built into the app. Releases are signed with the permanent key in the `SB_KEYSTORE_B64` secret (backup: Proton Drive `Claude Things/Setup/keys/`).
+Page One bar 1.7, Android app 0.3.0. One bar uses the same bridge and the same saved data as v0.4 (spaces, pins, passport, notes, reminders), so no new APK is needed. **Updates:** type `.update` in the bar (or You → Check for updates). It installs the latest release over the old app (Android asks you to confirm) and pulls the newest page from `main`, which shows with no install at all; the app also fetches a newer page by itself every few hours and switches next time you come home. A downloaded page that fails to start is thrown away automatically; `.update reset` goes back to the page built into the app. Releases are signed with the permanent key in the `SB_KEYSTORE_B64` secret (backup: Proton Drive `Claude Things/Setup/keys/`).
 
 ## Docs
 
