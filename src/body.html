@@ -1,0 +1,36 @@
+<div id="app" class="app">
+  <main id="home">
+    <header id="top">
+      <button id="date" data-act="agenda" aria-label="This week"></button>
+      <button id="me" data-act="you" aria-label="You"></button>
+    </header>
+    <div id="stage">
+      <div id="track"></div>
+    </div>
+    <nav id="dots"></nav>
+    <div id="barwrap">
+      <div id="answer" hidden></div>
+      <form id="bar" autocomplete="off" role="search">
+        <button type="button" id="cover" data-act="player" aria-label="Now playing" hidden></button>
+        <span id="slash" aria-hidden="true">/</span>
+        <span id="replyChip" hidden></span>
+        <input id="q" type="text" enterkeyhint="go" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Type to your phone" placeholder="Type to your phone">
+        <button type="button" id="clearq" data-act="find-close" aria-label="Close" hidden><svg class="i" aria-hidden="true"><use href="#i-x"/></svg></button>
+        <button type="submit" id="send" aria-label="Send" hidden><svg class="i" aria-hidden="true"><use href="#i-send"/></svg></button>
+        <button type="button" id="wait" data-act="waiting" aria-label="What's waiting"></button>
+      </form>
+    </div>
+    <section id="find" aria-label="Results"></section>
+  </main>
+  <aside id="side" aria-label="What's waiting">
+    <div id="sideNow"></div>
+    <div id="sideBody"></div>
+  </aside>
+  <div id="scrim" data-act="scrim"></div>
+  <section id="sheet" class="sheet" role="dialog" aria-modal="true">
+    <div class="sh-grab"><i></i></div>
+    <div class="sh-body" id="sheetBody"></div>
+  </section>
+  <section id="player" class="player" role="dialog" aria-label="Now playing"></section>
+  <div id="toast" role="status" aria-live="polite"></div>
+</div>
