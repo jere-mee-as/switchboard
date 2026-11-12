@@ -219,8 +219,14 @@
     renderDots(ps);
   }
   function renderDots(ps = pages()) {
-    $('#dots').innerHTML = `<button id="spacename" data-act="spaces" aria-label="Spaces: ${esc(ps[S.page].name)}">${esc(ps[S.page].name)}</button>` +
-      `<span class="dts" aria-hidden="true">${ps.map((p, i) => `<i class="${i === S.page ? 'on' : ''} ${i !== S.page && pageLit(p) ? 'lit' : ''}"></i>`).join('')}</span>`;
+    // Updated in place, never rebuilt: a finger may be sliding along them.
+    const box = $('#dots');
+    let nm = box.querySelector('#spacename'), dts = box.querySelector('.dts');
+    if (!nm) { box.innerHTML = '<button id="spacename" data-act="spaces"></button><span class="dts" aria-hidden="true"></span>'; nm = box.querySelector('#spacename'); dts = box.querySelector('.dts'); }
+    nm.textContent = ps[S.page].name; nm.setAttribute('aria-label', 'Spaces: ' + ps[S.page].name);
+    while (dts.children.length < ps.length) dts.appendChild(document.createElement('i'));
+    while (dts.children.length > ps.length) dts.lastChild.remove();
+    ps.forEach((p, i) => { const d = dts.children[i]; d.className = (i === S.page ? 'on' : '') + (i !== S.page && pageLit(p) ? ' lit' : ''); });
   }
   const stageW = () => $('#stage').clientWidth || 1;
   function placeTrack(dx = 0) { $('#track').style.transform = `translate3d(${-S.page * stageW() + dx}px,0,0)`; }
@@ -1056,7 +1062,7 @@
       const t = e.touches[0];
       g = { x: t.clientX, y: t.clientY, ax: null, pts: [[t.clientX, t.clientY, performance.now()]], tile: e.target.closest('#stage .tile[data-key]') };
       if (g.tile) g.lp = setTimeout(() => holdTile(g), 430);
-      if (el.id === 'dots') { const k = g; g.lp = setTimeout(() => startScrub(k), 260); }
+      if (el.id === 'dots') g.dots = true;
     }, { passive: true });
     el.addEventListener('touchmove', e => {
       if (!g) return;
@@ -1064,6 +1070,11 @@
       g.pts.push([t.clientX, t.clientY, performance.now()]); if (g.pts.length > 6) g.pts.shift();
       if (g.scrub) { e.preventDefault(); return scrubTo(t.clientX); }
       if (g.drag && g.ghost) { e.preventDefault(); return dragTile(g, t); }
+      if (g.dots && !g.ax) {
+        // On the dots, any slide scrubs straight away.
+        if (Math.hypot(dx, dy) < 6) return;
+        g.ax = 'scrub'; startScrub(g); e.preventDefault(); return;
+      }
       if (!g.ax) {
         if (Math.hypot(dx, dy) < 9) return;
         clearTimeout(g.lp);
@@ -1105,9 +1116,9 @@
   // The app drawer is the bar's empty state, opened without the keyboard.
   function openDrawer() { closeSheet(); hideAnswer(); S.fromDrawer = true; enterFind(); buzz(); }
 
-  // Hold the dots, then slide along them to go straight to any page.
+  // Slide along the dots to go straight to any page.
   function startScrub(g) {
-    g.scrub = true; buzz('long'); hideAnswer();
+    g.scrub = true; buzz(); hideAnswer();
     $('#dots').classList.add('scrub');
     scrubTo(g.x);
   }
