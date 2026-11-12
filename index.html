@@ -885,7 +885,7 @@ if (typeof module !== 'undefined') module.exports = SBQR;
      tap the bar        type to your phone: apps, people, .commands, sums, the web
      swipe sideways     next space; Home is in the middle: Recent (apps, settings, files) to its left, spaces to its right
      pull up            everything waiting, people first; reply right from the bar
-     pull down          every app, A–Z (pull down from the date at the top: what's waiting, dropped in from above)
+     pull down          every app, A–Z; pull down again to type (pull down from the date at the top: what's waiting)
      tap the cover      the album-art player
      hold an app        options; hold and drag to reorder
    Unfolded, what's waiting sits beside home.
@@ -2566,11 +2566,17 @@ if (typeof module !== 'undefined') module.exports = SBQR;
     swipeToClear($('#sheetBody')); swipeToClear($('#sideBody'));
     pullToClose($('#sheet'), () => $('#sheetBody'), () => closeSheet());
     pullToClose($('#player'), () => $('#player .pl-body'), closePlayer);
-    // Pull down at the top of the drawer (or the results) to put it away.
     let fd = null;
     $('#find').addEventListener('touchstart', e => { const sc = $('#fscroll'); if (e.target.closest('#azstrip')) { fd = null; return; } fd = { y: e.touches[0].clientY, x: e.touches[0].clientX, top: !sc || sc.scrollTop <= 0 || sc.classList.contains('rev') }; }, { passive: true });
     $('#find').addEventListener('touchmove', e => { if (!fd || !fd.top) return; const dy = e.touches[0].clientY - fd.y; if (dy < -6 || Math.abs(e.touches[0].clientX - fd.x) > 24) fd = null; else fd.dy = dy; }, { passive: true });
-    $('#find').addEventListener('touchend', () => { if (fd && fd.dy > 90 && !$('#fscroll').classList.contains('rev')) { quietUntil = performance.now() + 300; exitFind(); } fd = null; });
+    // Swipe down again in the open list: straight to typing. Once you're typing, it puts the list away.
+    $('#find').addEventListener('touchend', () => {
+      if (fd && fd.dy > 90 && !$('#fscroll').classList.contains('rev')) {
+        quietUntil = performance.now() + 300;
+        if (document.activeElement !== q()) { q().focus({ preventScroll: true }); buzz(); } else exitFind();
+      }
+      fd = null;
+    });
     // Results and the A–Z grid keep the keyboard up when tapped.
     $('#find').addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
     // Long-press in the results opens the app's options.
